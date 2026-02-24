@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "jest --forceExit",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit",
     "seed": "node seeds/plantCatalog.js",
     "seed:admin": "node seeds/adminUser.js"
   },
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "jest": "^30.2.0",
+    "mongodb-memory-server": "^11.0.1",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"
   }
