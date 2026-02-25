@@ -86,7 +86,7 @@ export const updateUser = async (req, res, next) => {
     delete updates.role;
 
     const user = await User.findByIdAndUpdate(id, updates, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     }).select('-refreshToken');
 

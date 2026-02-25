@@ -9,6 +9,7 @@ import { generalLimiter } from './middleware/rateLimiter.js';
 import errorHandler from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
+import plantBatchRoutes from './routes/plantBatch.routes.js';
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.get('/api/v1/health', (req, res) => {
 // Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/plant-batches', plantBatchRoutes);
 
 // 404 handler
 app.use((req, res) => {
