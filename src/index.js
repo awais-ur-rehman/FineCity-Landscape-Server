@@ -12,6 +12,7 @@ import userRoutes from './routes/user.routes.js';
 import plantBatchRoutes from './routes/plantBatch.routes.js';
 import careScheduleRoutes from './routes/careSchedule.routes.js';
 import careTaskRoutes from './routes/careTask.routes.js';
+import syncRoutes from './routes/sync.routes.js';
 import startTaskGeneratorCron from './jobs/taskGeneratorCron.js';
 
 const app = express();
@@ -46,6 +47,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/plant-batches', plantBatchRoutes);
 app.use('/api/v1/care-schedules', careScheduleRoutes);
 app.use('/api/v1/care-tasks', careTaskRoutes);
+app.use('/api/v1/sync', syncRoutes);
 
 // 404 handler
 app.use((req, res) => {
