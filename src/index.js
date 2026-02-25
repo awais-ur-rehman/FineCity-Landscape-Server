@@ -10,6 +10,9 @@ import errorHandler from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import plantBatchRoutes from './routes/plantBatch.routes.js';
+import careScheduleRoutes from './routes/careSchedule.routes.js';
+import careTaskRoutes from './routes/careTask.routes.js';
+import startTaskGeneratorCron from './jobs/taskGeneratorCron.js';
 
 const app = express();
 
@@ -41,6 +44,8 @@ app.get('/api/v1/health', (req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/plant-batches', plantBatchRoutes);
+app.use('/api/v1/care-schedules', careScheduleRoutes);
+app.use('/api/v1/care-tasks', careTaskRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -60,6 +65,8 @@ app.use(errorHandler);
 const start = async () => {
   await connectDB();
   initFirebase();
+
+  startTaskGeneratorCron();
 
   app.listen(env.PORT, () => {
     console.log(`Server running on port ${env.PORT} in ${env.NODE_ENV} mode`);
