@@ -120,6 +120,39 @@ export const sendTaskDueNotification = async (task, batch, fcmTokens) => {
 };
 
 /**
+ * Send task reminder push notification (advance warning before task is due).
+ * @param {Object} task - CareTask document
+ * @param {Object} batch - PlantBatch document
+ * @param {string[]} fcmTokens
+ * @returns {Promise<number>}
+ */
+export const sendTaskReminderNotification = async (task, batch, fcmTokens) => {
+  if (!isFirebaseReady() || fcmTokens.length === 0) return 0;
+
+  const careLabel = task.careType.charAt(0).toUpperCase() + task.careType.slice(1);
+  const locationInfo = [batch.zone && `Zone ${batch.zone}`, batch.location]
+    .filter(Boolean)
+    .join(', ');
+
+  const message = {
+    notification: {
+      title: `Reminder: ${careLabel} in 15 min — ${batch.name}`,
+      body: locationInfo
+        ? `${locationInfo} — ${task.notes || 'Get ready for upcoming task'}`
+        : task.notes || 'A care task is coming up soon',
+    },
+    data: {
+      type: 'task_reminder',
+      taskId: task._id.toString(),
+      batchId: task.batchId.toString(),
+      careType: task.careType,
+    },
+  };
+
+  return sendToTokens(fcmTokens, message);
+};
+
+/**
  * Send schedule-updated push notification.
  * @param {Object} schedule - CareSchedule document
  * @param {string} action - 'created' | 'updated' | 'deactivated'

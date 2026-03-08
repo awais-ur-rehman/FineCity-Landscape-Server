@@ -40,7 +40,7 @@ const env = {
 
   ADMIN_URL: process.env.ADMIN_URL || 'http://localhost:5173',
 
-  TASK_GENERATOR_CRON: process.env.TASK_GENERATOR_CRON || '0 * * * *',
+  TASK_GENERATOR_CRON: process.env.TASK_GENERATOR_CRON || '*/5 * * * *',
 
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@finecity.ae',
 };
