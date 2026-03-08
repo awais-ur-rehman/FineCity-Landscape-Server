@@ -6,6 +6,8 @@ import * as notificationService from './notification.service.js';
 const LOOKAHEAD_DAYS = 7;
 const OVERDUE_HOURS = 2;
 const DUE_SOON_MINUTES = 30;
+const REMINDER_MIN_MINUTES = 10;
+const REMINDER_MAX_MINUTES = 20;
 
 /**
  * Add days to a date (midnight UTC).
@@ -137,6 +139,39 @@ export const notifyDueTasks = async () => {
     const sent = await notificationService.sendTaskDueNotification(task, batch, tokens);
 
     task.notificationSent = true;
+    await task.save();
+    sentCount += sent;
+  }
+
+  return sentCount;
+};
+
+/**
+ * Send advance reminder notifications for tasks due in 10–20 minutes.
+ * Uses reminderSent flag to avoid duplicate reminders.
+ * @returns {Promise<number>} Number of reminder notifications sent
+ */
+export const sendAdvanceReminders = async () => {
+  const now = new Date();
+  const minCutoff = new Date(now.getTime() + REMINDER_MIN_MINUTES * 60 * 1000);
+  const maxCutoff = new Date(now.getTime() + REMINDER_MAX_MINUTES * 60 * 1000);
+
+  const tasks = await CareTask.find({
+    scheduledAt: { $gte: minCutoff, $lte: maxCutoff },
+    status: 'pending',
+    reminderSent: false,
+  });
+
+  let sentCount = 0;
+
+  for (const task of tasks) {
+    const batch = await PlantBatch.findById(task.batchId);
+    if (!batch) continue;
+
+    const tokens = await notificationService.getTokensForUsers(task.assignedTo);
+    const sent = await notificationService.sendTaskReminderNotification(task, batch, tokens);
+
+    task.reminderSent = true;
     await task.save();
     sentCount += sent;
   }
