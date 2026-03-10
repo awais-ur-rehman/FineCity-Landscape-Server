@@ -1,0 +1,14 @@
+import { Router } from 'express';
+import * as zoneController from '../controllers/zone.controller.js';
+import auth from '../middleware/auth.js';
+import rbac from '../middleware/rbac.js';
+import validate from '../middleware/validate.js';
+import { createZoneSchema, updateZoneSchema, listZoneQuerySchema } from '../validators/resource.validator.js';
+const router = Router();
+router.use(auth);
+router.get('/', validate(listZoneQuerySchema, 'query'), zoneController.listZones);
+router.get('/:id', zoneController.getZone);
+router.post('/', rbac('super_admin'), validate(createZoneSchema), zoneController.createZone);
+router.put('/:id', rbac('super_admin'), validate(updateZoneSchema), zoneController.updateZone);
+router.delete('/:id', rbac('super_admin'), zoneController.deleteZone);
+export default router;

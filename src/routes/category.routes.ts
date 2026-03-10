@@ -1,0 +1,19 @@
+import { Router } from 'express';
+import * as categoryController from '../controllers/category.controller.js';
+import auth from '../middleware/auth.js';
+import rbac from '../middleware/rbac.js';
+import validate from '../middleware/validate.js';
+import { createCategorySchema, updateCategorySchema } from '../validators/resource.validator.js';
+
+const router = Router();
+
+router.use(auth);
+
+router.get('/', categoryController.listCategories);
+router.get('/:id', categoryController.getCategory);
+
+router.post('/', rbac('super_admin'), validate(createCategorySchema), categoryController.createCategory);
+router.put('/:id', rbac('super_admin'), validate(updateCategorySchema), categoryController.updateCategory);
+router.delete('/:id', rbac('super_admin'), categoryController.deleteCategory);
+
+export default router;
