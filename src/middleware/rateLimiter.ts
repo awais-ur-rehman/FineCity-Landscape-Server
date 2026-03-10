@@ -23,9 +23,9 @@ export const generalLimiter = rateLimit({
 export const otpLimiter = rateLimit({
   windowMs: RATE_LIMIT_OTP.windowMs,
   limit: RATE_LIMIT_OTP.max,
-  keyGenerator: (req) => {
+  keyGenerator: (req, res) => {
     if (req.body?.email) return req.body.email;
-    return req.ip || 'unknown';
+    return ipKeyGenerator(req, res);
   },
   message: {
     success: false,

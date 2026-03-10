@@ -9,7 +9,8 @@
     "build": "rimraf dist && tsc",
     "start": "node dist/index.js",
     "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit",
-    "seed": "tsx seeds/plantCatalog.ts",
+    "seed": "tsx seeds/fullSeed.ts",
+    "seed:catalog": "tsx seeds/plantCatalog.ts",
     "seed:admin": "tsx seeds/adminUser.ts"
   },
   "keywords": [],
