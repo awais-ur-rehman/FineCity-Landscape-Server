@@ -4,6 +4,7 @@ import auth from '../middleware/auth.js';
 import rbac from '../middleware/rbac.js';
 import validate from '../middleware/validate.js';
 import { createUserSchema, updateUserSchema, switchBranchSchema } from '../validators/user.validator.js';
+import { objectIdParamSchema } from '../validators/common.validator.js';
 
 const router = Router();
 
@@ -23,9 +24,9 @@ router.get('/', userController.listUsers);
 router.post('/', validate(createUserSchema), userController.createUser);
 
 /** PUT /users/:id */
-router.put('/:id', validate(updateUserSchema), userController.updateUser);
+router.put('/:id', validate(objectIdParamSchema, 'params'), validate(updateUserSchema), userController.updateUser);
 
 /** DELETE /users/:id */
-router.delete('/:id', userController.deleteUser);
+router.delete('/:id', validate(objectIdParamSchema, 'params'), userController.deleteUser);
 
 export default router;

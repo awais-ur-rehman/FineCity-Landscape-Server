@@ -1,8 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import * as careScheduleService from '../services/careSchedule.service.js';
+import AuditLog from '../models/AuditLog.js';
 import apiResponse from '../utils/apiResponse.js';
 import PlantBatch from '../models/PlantBatch.js';
 import ApiError from '../utils/apiError.js';
+
+/** Verify the schedule belongs to a branch the requesting user manages. */
+const assertScheduleBranchAccess = async (req: Request, scheduleId: string) => {
+  if (req.user?.role === 'super_admin') return;
+  const schedule = await careScheduleService.getScheduleById(scheduleId);
+  const branchId = schedule.branchId?.toString();
+  const hasAccess = req.user?.branches.some((b) => b.toString() === branchId);
+  if (!hasAccess) throw ApiError.forbidden('Access denied to this schedule');
+  return schedule;
+};
 
 /**
  * GET /care-schedules
@@ -37,6 +48,13 @@ export const listSchedules = async (req: Request, res: Response, next: NextFunct
 export const getSchedule = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const schedule = await careScheduleService.getScheduleById(req.params.id as string);
+
+    if (req.user?.role !== 'super_admin') {
+      const branchId = schedule.branchId?.toString();
+      const hasAccess = req.user?.branches.some((b) => b.toString() === branchId);
+      if (!hasAccess) throw ApiError.forbidden('Access denied to this schedule');
+    }
+
     return apiResponse(res, 200, 'Care schedule retrieved successfully', schedule);
   } catch (error) {
     next(error);
@@ -51,15 +69,18 @@ export const createSchedule = async (req: Request, res: Response, next: NextFunc
     if (req.user) {
       if (req.user.role !== 'super_admin') {
         const batch = await PlantBatch.findById(req.body.batchId);
-        if (!batch) {
-          throw ApiError.notFound('Plant batch not found');
-        }
+        if (!batch) throw ApiError.notFound('Plant batch not found');
         const hasAccess = req.user.branches.some((b) => b.toString() === batch.branchId.toString());
-        if (!hasAccess) {
-          throw ApiError.forbidden('Cannot create schedule for a batch you do not manage');
-        }
+        if (!hasAccess) throw ApiError.forbidden('Cannot create schedule for a batch you do not manage');
       }
       const schedule = await careScheduleService.createSchedule(req.body, req.user._id.toString());
+      AuditLog.create({
+        action: 'CREATE',
+        entity: 'CareSchedule',
+        entityId: (schedule as { _id: unknown })._id?.toString() ?? '',
+        performedBy: req.user._id,
+        details: { batchId: req.body.batchId, careType: req.body.careType, frequencyDays: req.body.frequencyDays },
+      }).catch(() => {});
       return apiResponse(res, 201, 'Care schedule created successfully', schedule);
     }
   } catch (error) {
@@ -72,7 +93,15 @@ export const createSchedule = async (req: Request, res: Response, next: NextFunc
  */
 export const updateSchedule = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    await assertScheduleBranchAccess(req, req.params.id as string);
     const schedule = await careScheduleService.updateSchedule(req.params.id as string, req.body);
+    AuditLog.create({
+      action: 'UPDATE',
+      entity: 'CareSchedule',
+      entityId: req.params.id as string,
+      performedBy: req.user!._id,
+      details: { updatedFields: Object.keys(req.body) },
+    }).catch(() => {});
     return apiResponse(res, 200, 'Care schedule updated successfully', schedule);
   } catch (error) {
     next(error);
@@ -84,7 +113,15 @@ export const updateSchedule = async (req: Request, res: Response, next: NextFunc
  */
 export const deleteSchedule = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await careScheduleService.deleteSchedule(req.params.id as string);
+    await assertScheduleBranchAccess(req, req.params.id as string);
+    await careScheduleService.deleteSchedule(req.params.id as string, req.user!._id.toString());
+    AuditLog.create({
+      action: 'DELETE',
+      entity: 'CareSchedule',
+      entityId: req.params.id as string,
+      performedBy: req.user!._id,
+      details: {},
+    }).catch(() => {});
     return apiResponse(res, 200, 'Care schedule deactivated successfully');
   } catch (error) {
     next(error);

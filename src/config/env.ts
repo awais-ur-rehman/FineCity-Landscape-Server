@@ -34,8 +34,19 @@ interface EnvConfig {
   SMTP_FROM: string;
   FIREBASE_SERVICE_ACCOUNT_PATH: string;
   ADMIN_URL: string;
+  /** Daily — generates tasks for next 30 days from active schedules */
   TASK_GENERATOR_CRON: string;
+  /** Every 5 min — sends FCM push for tasks due within 30 min */
+  TASK_DUE_NOTIFIER_CRON: string;
+  /** Every 5 min — sends FCM reminder 10–20 min before task */
+  TASK_REMINDER_CRON: string;
+  /** Daily — marks pending tasks 2+ hours overdue as missed */
+  TASK_OVERDUE_CRON: string;
   ADMIN_EMAIL: string;
+  /** Cloudinary credentials (optional — photo upload disabled if not set) */
+  CLOUDINARY_CLOUD_NAME: string | undefined;
+  CLOUDINARY_API_KEY: string | undefined;
+  CLOUDINARY_API_SECRET: string | undefined;
 }
 
 const env: EnvConfig = {
@@ -53,8 +64,14 @@ const env: EnvConfig = {
   SMTP_FROM: process.env.SMTP_FROM || '"Finecity Landscape" <noreply@finecitylandscape.com>',
   FIREBASE_SERVICE_ACCOUNT_PATH: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json',
   ADMIN_URL: process.env.ADMIN_URL || 'http://localhost:5173',
-  TASK_GENERATOR_CRON: process.env.TASK_GENERATOR_CRON || '0 * * * *',
+  TASK_GENERATOR_CRON: process.env.TASK_GENERATOR_CRON || '0 2 * * *',         // daily at 02:00
+  TASK_DUE_NOTIFIER_CRON: process.env.TASK_DUE_NOTIFIER_CRON || '*/5 * * * *', // every 5 min
+  TASK_REMINDER_CRON: process.env.TASK_REMINDER_CRON || '*/5 * * * *',         // every 5 min
+  TASK_OVERDUE_CRON: process.env.TASK_OVERDUE_CRON || '0 3 * * *',             // daily at 03:00
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@finecity.ae',
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
 };
 
 export default env;

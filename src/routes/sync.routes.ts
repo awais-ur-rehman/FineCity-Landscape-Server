@@ -11,7 +11,7 @@ const router = Router();
 router.post(
   '/',
   auth,
-  rbac('admin', 'employee'),
+  rbac('super_admin', 'admin', 'employee'),
   validate(syncSchema),
   syncController.sync,
 );

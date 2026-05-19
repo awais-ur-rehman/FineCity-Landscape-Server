@@ -4,16 +4,17 @@ import auth from '../middleware/auth.js';
 import rbac from '../middleware/rbac.js';
 import validate from '../middleware/validate.js';
 import { createBranchSchema, updateBranchSchema } from '../validators/resource.validator.js';
+import { objectIdParamSchema } from '../validators/common.validator.js';
 
 const router = Router();
 
 router.use(auth);
 
-router.get('/', branchController.listBranches);
-router.get('/:id', branchController.getBranch);
+router.get('/', rbac('super_admin', 'admin'), branchController.listBranches);
+router.get('/:id', rbac('super_admin', 'admin'), validate(objectIdParamSchema, 'params'), branchController.getBranch);
 
 router.post('/', rbac('super_admin'), validate(createBranchSchema), branchController.createBranch);
-router.put('/:id', rbac('super_admin'), validate(updateBranchSchema), branchController.updateBranch);
-router.delete('/:id', rbac('super_admin'), branchController.deleteBranch);
+router.put('/:id', rbac('super_admin'), validate(objectIdParamSchema, 'params'), validate(updateBranchSchema), branchController.updateBranch);
+router.delete('/:id', rbac('super_admin'), validate(objectIdParamSchema, 'params'), branchController.deleteBranch);
 
 export default router;

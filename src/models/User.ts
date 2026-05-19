@@ -11,6 +11,7 @@ export interface IUser extends Document {
   name: string;
   phone?: string;
   role: 'super_admin' | 'admin' | 'employee';
+  passwordHash?: string;
   isActive: boolean;
   branches: mongoose.Types.ObjectId[];
   currentBranch?: mongoose.Types.ObjectId;
@@ -38,6 +39,10 @@ const userSchema = new Schema<IUser>(
     phone: {
       type: String,
       trim: true,
+    },
+    passwordHash: {
+      type: String,
+      select: false, // never returned in queries unless explicitly requested
     },
     role: {
       type: String,
@@ -67,6 +72,7 @@ const userSchema = new Schema<IUser>(
     ],
     refreshToken: {
       type: String,
+      select: false,
     },
     lastSyncAt: {
       type: Date,
@@ -83,6 +89,7 @@ userSchema.index({ branches: 1 });
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.refreshToken;
+  delete obj.passwordHash;
   delete obj.__v;
   return obj;
 };
