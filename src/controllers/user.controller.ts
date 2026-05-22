@@ -10,6 +10,7 @@ interface ListUsersQuery {
   search?: string;
   page?: string;
   limit?: string;
+  branchId?: string;
 }
 
 /**
@@ -18,16 +19,18 @@ interface ListUsersQuery {
  */
 export const listUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { role, search, page = '1', limit = '20' } = req.query as unknown as ListUsersQuery;
+    const { role, search, page = '1', limit = '20', branchId } = req.query as unknown as ListUsersQuery;
     const safeLimit = Math.min(parseInt(limit, 10) || 20, 100);
     const skip = (parseInt(page, 10) - 1) * safeLimit;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: any = { isActive: true };
 
-    // Restrict Admin to their branches
+    // branch_manager scoped to their own branches; super_admin can filter by branchId param
     if (req.user?.role !== 'super_admin') {
       filter.branches = { $in: req.user?.branches };
+    } else if (branchId) {
+      filter.branches = branchId;
     }
 
     if (role) {
