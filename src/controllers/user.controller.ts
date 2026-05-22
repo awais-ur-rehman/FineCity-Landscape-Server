@@ -105,7 +105,11 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
       throw ApiError.forbidden('Cannot create super_admin accounts');
     }
 
-    if (req.user?.role !== 'super_admin' && branches?.length) {
+    // branch_manager must assign at least one branch they manage
+    if (req.user?.role === 'branch_manager') {
+      if (!branches?.length) {
+        throw ApiError.badRequest('You must assign at least one branch when creating a user');
+      }
       const allowed = branches.every((b: string) => req.user?.branches.some(ub => ub.toString() === b));
       if (!allowed) {
         throw ApiError.forbidden('Cannot assign branches you do not manage');
@@ -238,8 +242,8 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
       throw ApiError.forbidden('Cannot deactivate a super admin user');
     }
 
-    if (user.role === 'admin' && req.user!.role !== 'super_admin') {
-      throw ApiError.forbidden('Only super admins can deactivate admins');
+    if (user.role === 'branch_manager' && req.user!.role !== 'super_admin') {
+      throw ApiError.forbidden('Only super admins can deactivate branch managers');
     }
 
     // Non-super_admin can only deactivate users who share a branch

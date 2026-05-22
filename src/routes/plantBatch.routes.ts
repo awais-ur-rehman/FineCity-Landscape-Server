@@ -19,7 +19,7 @@ router.use(auth);
 /** GET /plant-batches — admin + employee can read */
 router.get(
   '/',
-  rbac('super_admin', 'admin', 'employee'),
+  rbac('super_admin', 'branch_manager', 'employee'),
   validate(listPlantBatchQuerySchema, 'query'),
   plantBatchController.listBatches,
 );
@@ -27,14 +27,14 @@ router.get(
 /** GET /plant-batches/export — CSV export, admin only (must be before /:id) */
 router.get(
   '/export',
-  rbac('super_admin', 'admin'),
+  rbac('super_admin', 'branch_manager'),
   plantBatchController.exportBatches,
 );
 
 /** POST /plant-batches/upload-image — upload batch image to Cloudinary */
 router.post(
   '/upload-image',
-  rbac('super_admin', 'admin'),
+  rbac('super_admin', 'branch_manager'),
   singleImageUpload,
   plantBatchController.uploadBatchImage,
 );
@@ -42,14 +42,14 @@ router.post(
 /** DELETE /plant-batches/delete-image — delete batch image from Cloudinary */
 router.delete(
   '/delete-image',
-  rbac('super_admin', 'admin'),
+  rbac('super_admin', 'branch_manager'),
   plantBatchController.deleteBatchImage,
 );
 
 /** GET /plant-batches/:id — admin + employee can read */
 router.get(
   '/:id',
-  rbac('super_admin', 'admin', 'employee'),
+  rbac('super_admin', 'branch_manager', 'employee'),
   validate(objectIdParamSchema, 'params'),
   plantBatchController.getBatch,
 );
@@ -57,7 +57,7 @@ router.get(
 /** POST /plant-batches — admin only */
 router.post(
   '/',
-  rbac('super_admin', 'admin'),
+  rbac('super_admin', 'branch_manager'),
   validate(createPlantBatchSchema),
   plantBatchController.createBatch,
 );
@@ -65,7 +65,7 @@ router.post(
 /** PUT /plant-batches/:id — admin only */
 router.put(
   '/:id',
-  rbac('super_admin', 'admin'),
+  rbac('super_admin', 'branch_manager'),
   validate(objectIdParamSchema, 'params'),
   validate(updatePlantBatchSchema),
   plantBatchController.updateBatch,
@@ -74,7 +74,7 @@ router.put(
 /** DELETE /plant-batches/:id — admin only (soft delete) */
 router.delete(
   '/:id',
-  rbac('super_admin', 'admin'),
+  rbac('super_admin', 'branch_manager'),
   validate(objectIdParamSchema, 'params'),
   plantBatchController.deleteBatch,
 );

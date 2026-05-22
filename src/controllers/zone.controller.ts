@@ -41,6 +41,7 @@ export const getZone = async (req: Request, res: Response, next: NextFunction) =
     if (!zone) {
       throw ApiError.notFound('Zone not found');
     }
+    assertBranchAccess(req, zone.branchId.toString());
     return apiResponse(res, 200, 'Zone retrieved successfully', zone);
   } catch (error) {
     next(error);

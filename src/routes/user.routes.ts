@@ -15,7 +15,7 @@ router.get('/me', userController.getMe);
 router.put('/me/branch', validate(switchBranchSchema), userController.switchBranch);
 
 /** Admin-only routes */
-router.use(rbac('super_admin', 'admin'));
+router.use(rbac('super_admin', 'branch_manager'));
 
 /** GET /users */
 router.get('/', userController.listUsers);

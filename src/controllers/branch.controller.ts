@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import Branch from '../models/Branch.js';
+import User from '../models/User.js';
 import apiResponse from '../utils/apiResponse.js';
 import ApiError from '../utils/apiError.js';
 
@@ -55,6 +56,12 @@ export const getBranch = async (req: Request, res: Response, next: NextFunction)
 export const createBranch = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const branch = await Branch.create({ ...req.body, createdBy: req.user!._id });
+
+    // Auto-assign the new branch to the super_admin who created it
+    await User.findByIdAndUpdate(req.user!._id, {
+      $addToSet: { branches: branch._id },
+    });
+
     return apiResponse(res, 201, 'Branch created successfully', branch);
   } catch (error) {
     next(error);

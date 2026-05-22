@@ -13,7 +13,7 @@ import { objectIdParamSchema } from '../validators/common.validator.js';
 const router = Router();
 
 /** All care schedule routes require auth + admin */
-router.use(auth, rbac('super_admin', 'admin'));
+router.use(auth, rbac('super_admin', 'branch_manager'));
 
 /** GET /care-schedules */
 router.get(

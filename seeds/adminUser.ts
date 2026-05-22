@@ -29,7 +29,7 @@ const seedAdmin = async () => {
       await User.create({
         email: ADMIN_EMAIL,
         name: 'Admin',
-        role: 'admin',
+        role: 'super_admin',
         isActive: true,
       });
       console.log(`Admin user created: ${ADMIN_EMAIL}`);

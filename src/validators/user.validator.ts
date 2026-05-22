@@ -11,7 +11,7 @@ export const createUserSchema = Joi.object({
     'string.min': 'Password must be at least 8 characters',
     'any.required': 'Password is required',
   }),
-  role: Joi.string().valid('admin', 'employee').default('employee'),
+  role: Joi.string().valid('branch_manager', 'employee').default('employee'),
   branches: Joi.array().items(objectId).default([]),
   currentBranch: objectId,
 });

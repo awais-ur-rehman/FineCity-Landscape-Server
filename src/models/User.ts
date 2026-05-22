@@ -10,7 +10,7 @@ export interface IUser extends Document {
   email: string;
   name: string;
   phone?: string;
-  role: 'super_admin' | 'admin' | 'employee';
+  role: 'super_admin' | 'branch_manager' | 'employee';
   passwordHash?: string;
   isActive: boolean;
   branches: mongoose.Types.ObjectId[];
@@ -46,7 +46,7 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['super_admin', 'admin', 'employee'],
+      enum: ['super_admin', 'branch_manager', 'employee'],
       default: 'employee',
     },
     isActive: {

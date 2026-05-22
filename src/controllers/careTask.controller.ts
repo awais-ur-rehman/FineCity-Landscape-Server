@@ -49,7 +49,7 @@ export const getTask = async (req: Request, res: Response, next: NextFunction) =
       // Employees may only view tasks assigned to them
       const isAssigned = task.assignedTo.some((u) => u._id?.toString() === userId);
       if (!isAssigned) throw ApiError.forbidden('Access denied to this task');
-    } else if (role === 'admin') {
+    } else if (role === 'branch_manager') {
       const hasAccess = req.user?.branches.some((b) => b.toString() === task.branchId.toString());
       if (!hasAccess) throw ApiError.forbidden('Access denied to this task');
     }

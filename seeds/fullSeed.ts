@@ -114,7 +114,7 @@ const seed = async () => {
 
   const admin1 = await User.create({
     ...ACCOUNTS.admin1,
-    role: 'admin',
+    role: 'branch_manager',
     passwordHash: hash,
     isActive: true,
     branches: [mainBranch._id],
@@ -123,7 +123,7 @@ const seed = async () => {
 
   const admin2 = await User.create({
     ...ACCOUNTS.admin2,
-    role: 'admin',
+    role: 'branch_manager',
     passwordHash: hash,
     isActive: true,
     branches: [downtownBranch._id],

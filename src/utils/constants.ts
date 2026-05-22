@@ -1,12 +1,12 @@
 /** @enum {string} User roles */
 export const ROLES = {
   SUPER_ADMIN: 'super_admin',
-  ADMIN: 'admin',
+  BRANCH_MANAGER: 'branch_manager',
   EMPLOYEE: 'employee',
 };
 
 /** @enum {string} All valid roles */
-export const ALL_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.EMPLOYEE];
+export const ALL_ROLES = [ROLES.SUPER_ADMIN, ROLES.BRANCH_MANAGER, ROLES.EMPLOYEE];
 
 /** OTP configuration */
 export const OTP_LENGTH = 6;

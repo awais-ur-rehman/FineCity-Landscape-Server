@@ -15,14 +15,14 @@ router.get('/:id', validate(objectIdParamSchema, 'params'), fertilizerController
 
 router.post(
   '/',
-  rbac('super_admin', 'admin'),
+  rbac('super_admin', 'branch_manager'),
   validate(createFertilizerSchema),
   fertilizerController.createFertilizer
 );
 
 router.put(
   '/:id',
-  rbac('super_admin', 'admin'),
+  rbac('super_admin', 'branch_manager'),
   validate(objectIdParamSchema, 'params'),
   validate(updateFertilizerSchema),
   fertilizerController.updateFertilizer
@@ -30,7 +30,7 @@ router.put(
 
 router.delete(
   '/:id',
-  rbac('super_admin', 'admin'),
+  rbac('super_admin', 'branch_manager'),
   validate(objectIdParamSchema, 'params'),
   fertilizerController.deleteFertilizer
 );

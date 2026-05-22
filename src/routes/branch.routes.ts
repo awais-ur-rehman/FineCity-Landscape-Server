@@ -10,8 +10,8 @@ const router = Router();
 
 router.use(auth);
 
-router.get('/', rbac('super_admin', 'admin'), branchController.listBranches);
-router.get('/:id', rbac('super_admin', 'admin'), validate(objectIdParamSchema, 'params'), branchController.getBranch);
+router.get('/', rbac('super_admin', 'branch_manager'), branchController.listBranches);
+router.get('/:id', rbac('super_admin', 'branch_manager'), validate(objectIdParamSchema, 'params'), branchController.getBranch);
 
 router.post('/', rbac('super_admin'), validate(createBranchSchema), branchController.createBranch);
 router.put('/:id', rbac('super_admin'), validate(objectIdParamSchema, 'params'), validate(updateBranchSchema), branchController.updateBranch);
