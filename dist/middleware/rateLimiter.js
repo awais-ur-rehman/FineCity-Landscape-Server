@@ -15,20 +15,14 @@ export const generalLimiter = rateLimit({
     legacyHeaders: false,
 });
 /**
- * OTP rate limiter: 3 requests per 15 minutes per email.
- * Uses email from request body as key, falls back to IP.
+ * Login rate limiter: 3 requests per 15 minutes per IP.
  */
 export const otpLimiter = rateLimit({
     windowMs: RATE_LIMIT_OTP.windowMs,
     limit: RATE_LIMIT_OTP.max,
-    keyGenerator: (req) => {
-        if (req.body?.email)
-            return req.body.email;
-        return req.ip || 'unknown';
-    },
     message: {
         success: false,
-        message: 'Too many OTP requests, please try again after 15 minutes',
+        message: 'Too many login attempts, please try again after 15 minutes',
         error: { code: 'RATE_LIMIT_EXCEEDED' },
     },
     standardHeaders: true,

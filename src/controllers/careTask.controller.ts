@@ -148,9 +148,9 @@ export const skipTask = async (req: Request, res: Response, next: NextFunction) 
       AuditLog.create({
         action: 'SKIP',
         entity: 'CareTask',
-        entityId: req.params.id,
+        entityId: req.params.id as string,
         performedBy: req.user._id,
-        branchId: task.branchId,
+        branchId: task.branchId?.toString(),
         details: { reason: req.body.reason },
       }).catch(() => {});
       return apiResponse(res, 200, 'Task skipped successfully', task);

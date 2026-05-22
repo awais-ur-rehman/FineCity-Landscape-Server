@@ -184,7 +184,7 @@ export const getStats = async (from: string, to: string, branchId?: string) => {
   const dateFilter: Record<string, unknown> = {
     scheduledAt: { $gte: new Date(from), $lte: new Date(to) },
   };
-  if (branchId) dateFilter.branchId = branchId;
+  if (branchId) dateFilter.branchId = new mongoose.Types.ObjectId(branchId);
 
   const statusCounts = await CareTask.aggregate([
     { $match: dateFilter },
@@ -253,7 +253,7 @@ export const exportTasksCsv = async (from: string, to: string, branchId?: string
   const filter: Record<string, unknown> = {
     scheduledAt: { $gte: new Date(from), $lte: new Date(to) },
   };
-  if (branchId) filter.branchId = branchId;
+  if (branchId) filter.branchId = new mongoose.Types.ObjectId(branchId);
 
   const tasks = await CareTask.find(filter)
     .populate('batchId', 'name')

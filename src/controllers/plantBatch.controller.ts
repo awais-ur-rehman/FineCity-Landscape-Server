@@ -94,7 +94,7 @@ export const updateBatch = async (req: Request, res: Response, next: NextFunctio
       entity: 'PlantBatch',
       entityId: req.params.id as string,
       performedBy: req.user!._id,
-      branchId: (batch as { branchId?: unknown }).branchId,
+      branchId: (batch as unknown as { branchId?: { toString(): string } }).branchId?.toString(),
       details: { updatedFields: Object.keys(req.body) },
     }).catch(() => {});
     return apiResponse(res, 200, 'Plant batch updated successfully', batch);

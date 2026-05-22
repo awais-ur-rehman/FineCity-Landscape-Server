@@ -29,7 +29,13 @@ const env = {
     SMTP_FROM: process.env.SMTP_FROM || '"Finecity Landscape" <noreply@finecitylandscape.com>',
     FIREBASE_SERVICE_ACCOUNT_PATH: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json',
     ADMIN_URL: process.env.ADMIN_URL || 'http://localhost:5173',
-    TASK_GENERATOR_CRON: process.env.TASK_GENERATOR_CRON || '0 * * * *',
+    TASK_GENERATOR_CRON: process.env.TASK_GENERATOR_CRON || '0 2 * * *', // daily at 02:00
+    TASK_DUE_NOTIFIER_CRON: process.env.TASK_DUE_NOTIFIER_CRON || '*/5 * * * *', // every 5 min
+    TASK_REMINDER_CRON: process.env.TASK_REMINDER_CRON || '*/5 * * * *', // every 5 min
+    TASK_OVERDUE_CRON: process.env.TASK_OVERDUE_CRON || '0 3 * * *', // daily at 03:00
     ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@finecity.ae',
+    CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+    CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
 };
 export default env;

@@ -16,9 +16,13 @@ const userSchema = new Schema({
         type: String,
         trim: true,
     },
+    passwordHash: {
+        type: String,
+        select: false, // never returned in queries unless explicitly requested
+    },
     role: {
         type: String,
-        enum: ['super_admin', 'admin', 'employee'],
+        enum: ['super_admin', 'branch_manager', 'employee'],
         default: 'employee',
     },
     isActive: {
@@ -44,6 +48,7 @@ const userSchema = new Schema({
     ],
     refreshToken: {
         type: String,
+        select: false,
     },
     lastSyncAt: {
         type: Date,
@@ -56,6 +61,7 @@ userSchema.index({ branches: 1 });
 userSchema.methods.toJSON = function () {
     const obj = this.toObject();
     delete obj.refreshToken;
+    delete obj.passwordHash;
     delete obj.__v;
     return obj;
 };

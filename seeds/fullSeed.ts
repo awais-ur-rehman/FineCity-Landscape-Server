@@ -1,9 +1,9 @@
 /**
  * Full seed — clears all data then populates:
- *   1 super_admin · 2 admins · 3 employees
+ *   2 super_admins · 2 branch_managers · 5 employees
  *   2 branches · 5 zones · 5 categories · 7 plant types
  *   4 fertilizers · 7 plant batches · 12 care schedules
- *   ~40 care tasks (past completed + pending today/tomorrow)
+ *   ~200 care tasks (rich 30-day history for analytics + leaderboard)
  *
  * Run: npx tsx seeds/fullSeed.ts
  * All accounts use password: Finecity@123
@@ -30,24 +30,10 @@ import FertilizerUsage from '../src/models/FertilizerUsage.js';
 // ─── Credentials ─────────────────────────────────────────────────────────────
 const PASSWORD = 'Finecity@123';
 
-const ACCOUNTS = {
-  superAdmin: { email: 'awaisjarral37@gmail.com',  name: 'Awais Jarral',    phone: '+971501234001' },
-  admin1:     { email: 'asadhanzlah@gmail.com',    name: 'Asad Hanzlah',    phone: '+971501234002' },
-  admin2:     { email: 'omar.admin@finecity.ae',   name: 'Omar Al Farooq',  phone: '+971501234003' },
-  emp1:       { email: 'ali.hassan@finecity.ae',   name: 'Ali Hassan',      phone: '+971501234004' },
-  emp2:       { email: 'sara.ahmed@finecity.ae',   name: 'Sara Ahmed',      phone: '+971501234005' },
-  emp3:       { email: 'khalid.nasser@finecity.ae',name: 'Khalid Nasser',   phone: '+971501234006' },
-};
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const daysAgo  = (n: number) => new Date(Date.now() - n * 86_400_000);
 const daysFrom = (n: number) => new Date(Date.now() + n * 86_400_000);
-
-const todayAt = (hh: number, mm = 0) => {
-  const d = new Date();
-  d.setHours(hh, mm, 0, 0);
-  return d;
-};
+const todayAt  = (hh: number, mm = 0) => { const d = new Date(); d.setHours(hh, mm, 0, 0); return d; };
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 const seed = async () => {
@@ -72,10 +58,9 @@ const seed = async () => {
   ]);
   console.log('✓ Collections cleared');
 
-  // ── 2. Hash password ──────────────────────────────────────────────────────
   const hash = await bcrypt.hash(PASSWORD, 12);
 
-  // ── 3. Branches ───────────────────────────────────────────────────────────
+  // ── 2. Branches ───────────────────────────────────────────────────────────
   console.log('  Creating branches…');
   const [mainBranch, downtownBranch] = await Branch.insertMany([
     {
@@ -83,7 +68,7 @@ const seed = async () => {
       code: 'MN-01',
       location: 'Al Warsan, Dubai',
       address: 'Warehouse District, Al Warsan 3, Dubai, UAE',
-      contactPerson: 'Awais Jarral',
+      contactPerson: 'Irooh Bangash',
       contactPhone: '+971 4 123 4567',
       contactEmail: 'main@finecity.ae',
       isActive: true,
@@ -101,10 +86,14 @@ const seed = async () => {
   ]);
   console.log('✓ Branches created');
 
-  // ── 4. Users ──────────────────────────────────────────────────────────────
+  // ── 3. Users ──────────────────────────────────────────────────────────────
   console.log('  Creating users…');
+
+  // Super Admins
   await User.create({
-    ...ACCOUNTS.superAdmin,
+    email: 'iroohbangash@gmail.com',
+    name: 'Irooh Bangash',
+    phone: '+971501234000',
     role: 'super_admin',
     passwordHash: hash,
     isActive: true,
@@ -112,8 +101,22 @@ const seed = async () => {
     currentBranch: mainBranch._id,
   });
 
+  await User.create({
+    email: 'awaisjarral37@gmail.com',
+    name: 'Awais Jarral',
+    phone: '+971501234001',
+    role: 'super_admin',
+    passwordHash: hash,
+    isActive: true,
+    branches: [mainBranch._id, downtownBranch._id],
+    currentBranch: mainBranch._id,
+  });
+
+  // Branch Managers
   const admin1 = await User.create({
-    ...ACCOUNTS.admin1,
+    email: 'asadhanzlah@gmail.com',
+    name: 'Asad Hanzlah',
+    phone: '+971501234002',
     role: 'branch_manager',
     passwordHash: hash,
     isActive: true,
@@ -122,7 +125,9 @@ const seed = async () => {
   });
 
   const admin2 = await User.create({
-    ...ACCOUNTS.admin2,
+    email: 'omar.admin@finecity.ae',
+    name: 'Omar Al Farooq',
+    phone: '+971501234003',
     role: 'branch_manager',
     passwordHash: hash,
     isActive: true,
@@ -130,8 +135,11 @@ const seed = async () => {
     currentBranch: downtownBranch._id,
   });
 
+  // Main Nursery employees — varied performance profiles
   const emp1 = await User.create({
-    ...ACCOUNTS.emp1,
+    email: 'ali.hassan@finecity.ae',
+    name: 'Ali Hassan',
+    phone: '+971501234004',
     role: 'employee',
     passwordHash: hash,
     isActive: true,
@@ -140,7 +148,9 @@ const seed = async () => {
   });
 
   const emp2 = await User.create({
-    ...ACCOUNTS.emp2,
+    email: 'sara.ahmed@finecity.ae',
+    name: 'Sara Ahmed',
+    phone: '+971501234005',
     role: 'employee',
     passwordHash: hash,
     isActive: true,
@@ -148,340 +158,128 @@ const seed = async () => {
     currentBranch: mainBranch._id,
   });
 
+  const emp4 = await User.create({
+    email: 'faisal.malik@finecity.ae',
+    name: 'Faisal Malik',
+    phone: '+971501234007',
+    role: 'employee',
+    passwordHash: hash,
+    isActive: true,
+    branches: [mainBranch._id],
+    currentBranch: mainBranch._id,
+  });
+
+  const emp5 = await User.create({
+    email: 'nadia.rahman@finecity.ae',
+    name: 'Nadia Rahman',
+    phone: '+971501234008',
+    role: 'employee',
+    passwordHash: hash,
+    isActive: true,
+    branches: [mainBranch._id],
+    currentBranch: mainBranch._id,
+  });
+
+  // Downtown employee
   const emp3 = await User.create({
-    ...ACCOUNTS.emp3,
+    email: 'khalid.nasser@finecity.ae',
+    name: 'Khalid Nasser',
+    phone: '+971501234006',
     role: 'employee',
     passwordHash: hash,
     isActive: true,
     branches: [downtownBranch._id],
     currentBranch: downtownBranch._id,
   });
+
   console.log('✓ Users created');
 
-  // ── 5. Zones ──────────────────────────────────────────────────────────────
+  // ── 4. Zones ──────────────────────────────────────────────────────────────
   console.log('  Creating zones…');
   const [zoneA, zoneB, zoneC, zoneSR, zoneRT] = await Zone.insertMany([
-    { name: 'Zone A — Greenhouse',    code: 'Z-A',  branchId: mainBranch._id,     isActive: true },
-    { name: 'Zone B — Shade Area',    code: 'Z-B',  branchId: mainBranch._id,     isActive: true },
-    { name: 'Zone C — Outdoor Sun',   code: 'Z-C',  branchId: mainBranch._id,     isActive: true },
-    { name: 'Showroom Floor',          code: 'SR-1', branchId: downtownBranch._id, isActive: true },
-    { name: 'Rooftop Garden',          code: 'RT-1', branchId: downtownBranch._id, isActive: true },
+    { name: 'Zone A — Greenhouse',  code: 'Z-A',  branchId: mainBranch._id,     isActive: true },
+    { name: 'Zone B — Shade Area',  code: 'Z-B',  branchId: mainBranch._id,     isActive: true },
+    { name: 'Zone C — Outdoor Sun', code: 'Z-C',  branchId: mainBranch._id,     isActive: true },
+    { name: 'Showroom Floor',       code: 'SR-1', branchId: downtownBranch._id, isActive: true },
+    { name: 'Rooftop Garden',       code: 'RT-1', branchId: downtownBranch._id, isActive: true },
   ]);
   console.log('✓ Zones created');
 
-  // ── 6. Categories ─────────────────────────────────────────────────────────
+  // ── 5. Categories ─────────────────────────────────────────────────────────
   console.log('  Creating categories…');
   const [catIndoor, catOutdoor, catSucculent, catPalm] = await Category.insertMany([
-    { name: 'Indoor Plants',    slug: 'indoor',     description: 'Suited to indoor low-light environments' },
-    { name: 'Outdoor Plants',   slug: 'outdoor',    description: 'Thrive in direct sunlight and open air'  },
-    { name: 'Succulents & Cacti', slug: 'succulent', description: 'Drought-tolerant desert plants'         },
-    { name: 'Trees & Palms',    slug: 'palm',        description: 'Large woody palms and shade trees'       },
-    { name: 'Herbs & Edibles',  slug: 'herb',        description: 'Aromatic and edible garden plants'       },
+    { name: 'Indoor Plants',      slug: 'indoor',    description: 'Suited to indoor low-light environments' },
+    { name: 'Outdoor Plants',     slug: 'outdoor',   description: 'Thrive in direct sunlight and open air'  },
+    { name: 'Succulents & Cacti', slug: 'succulent', description: 'Drought-tolerant desert plants'          },
+    { name: 'Trees & Palms',      slug: 'palm',      description: 'Large woody palms and shade trees'        },
+    { name: 'Herbs & Edibles',    slug: 'herb',      description: 'Aromatic and edible garden plants'        },
   ]);
   console.log('✓ Categories created');
 
-  // ── 7. Plant Types ────────────────────────────────────────────────────────
+  // ── 6. Plant Types ────────────────────────────────────────────────────────
   console.log('  Creating plant types…');
   const [ptAreca, ptSnake, ptMonstera, ptBougain, , ptAloe] =
     await PlantType.insertMany([
-      {
-        name: 'Areca Palm',
-        scientificName: 'Dypsis lutescens',
-        description: 'Popular feathery indoor palm with golden-yellow stems.',
-        careInstructions: 'Bright indirect light. Water when top 2 cm of soil is dry. Mist leaves weekly.',
-      },
-      {
-        name: 'Snake Plant',
-        scientificName: 'Sansevieria trifasciata',
-        description: 'Nearly indestructible air-purifying plant with upright leaves.',
-        careInstructions: 'Tolerates low light. Water sparingly — every 2–6 weeks.',
-      },
-      {
-        name: 'Monstera',
-        scientificName: 'Monstera deliciosa',
-        description: 'Iconic split-leaf tropical plant. Fast grower in good conditions.',
-        careInstructions: 'Bright indirect light. Water every 1–2 weeks, let soil dry between.',
-      },
-      {
-        name: 'Bougainvillea',
-        scientificName: 'Bougainvillea glabra',
-        description: 'Vibrant climbing/hedging plant with paper-thin bracts.',
-        careInstructions: 'Full sun essential. Drought tolerant once established. Prune after flowering.',
-      },
-      {
-        name: 'Date Palm',
-        scientificName: 'Phoenix dactylifera',
-        description: 'Iconic UAE palm producing edible dates.',
-        careInstructions: 'Full sun. Deep watering every 1–2 weeks. High heat tolerance.',
-      },
-      {
-        name: 'Aloe Vera',
-        scientificName: 'Aloe barbadensis miller',
-        description: 'Succulent with medicinal gel. Very low maintenance.',
-        careInstructions: 'Bright indirect light. Water every 2–3 weeks. Well-draining soil essential.',
-      },
-      {
-        name: 'Arabian Jasmine',
-        scientificName: 'Jasminum sambac',
-        description: "UAE's national flower — intensely fragrant white blooms.",
-        careInstructions: 'Partial to full sun. Water regularly. Prune after blooming cycle.',
-      },
+      { name: 'Areca Palm',       scientificName: 'Dypsis lutescens',          careInstructions: 'Bright indirect light. Water when top 2 cm dry.' },
+      { name: 'Snake Plant',      scientificName: 'Sansevieria trifasciata',   careInstructions: 'Low light tolerant. Water every 2–6 weeks.'       },
+      { name: 'Monstera',         scientificName: 'Monstera deliciosa',        careInstructions: 'Bright indirect light. Water every 1–2 weeks.'    },
+      { name: 'Bougainvillea',    scientificName: 'Bougainvillea glabra',      careInstructions: 'Full sun. Drought tolerant once established.'      },
+      { name: 'Date Palm',        scientificName: 'Phoenix dactylifera',       careInstructions: 'Full sun. Deep watering every 1–2 weeks.'          },
+      { name: 'Aloe Vera',        scientificName: 'Aloe barbadensis miller',   careInstructions: 'Bright indirect light. Water every 2–3 weeks.'     },
+      { name: 'Arabian Jasmine',  scientificName: 'Jasminum sambac',           careInstructions: 'Partial to full sun. Water regularly.'             },
     ]);
   console.log('✓ Plant types created');
 
-  // ── 8. Fertilizers ────────────────────────────────────────────────────────
+  // ── 7. Fertilizers ────────────────────────────────────────────────────────
   console.log('  Creating fertilizers…');
   const [fertGreenGrow, fertBloomBoost, , fertShowGrow] =
     await Fertilizer.insertMany([
-      {
-        name: 'GreenGrow All-Purpose',
-        brand: 'GreenGrow',
-        type: 'organic',
-        npkRatio: '5-5-5',
-        description: 'Balanced organic feed for general plant health.',
-        defaultDosage: 50,
-        defaultUnit: 'ml',
-        isActive: true,
-        branchId: mainBranch._id,
-        createdBy: admin1._id,
-      },
-      {
-        name: 'BloomBoost Flowering',
-        brand: 'BloomBoost',
-        type: 'chemical',
-        npkRatio: '5-10-5',
-        description: 'High-phosphorus formula promotes heavy flowering.',
-        defaultDosage: 30,
-        defaultUnit: 'ml',
-        isActive: true,
-        branchId: mainBranch._id,
-        createdBy: admin1._id,
-      },
-      {
-        name: 'RootMax Stimulator',
-        brand: 'RootMax',
-        type: 'bio',
-        npkRatio: '3-15-3',
-        description: 'Bio-stimulant with mycorrhizae for strong root development.',
-        defaultDosage: 20,
-        defaultUnit: 'ml',
-        isActive: true,
-        branchId: mainBranch._id,
-        createdBy: admin1._id,
-      },
-      {
-        name: 'ShowGrow Premium',
-        brand: 'ShowGrow',
-        type: 'organic',
-        npkRatio: '8-4-4',
-        description: 'Premium slow-release organic pellets for showroom displays.',
-        defaultDosage: 10,
-        defaultUnit: 'g',
-        isActive: true,
-        branchId: downtownBranch._id,
-        createdBy: admin2._id,
-      },
+      { name: 'GreenGrow All-Purpose', brand: 'GreenGrow', type: 'organic',   npkRatio: '5-5-5',  description: 'Balanced organic feed.', defaultDosage: 50, defaultUnit: 'ml', isActive: true, branchId: mainBranch._id,     createdBy: admin1._id },
+      { name: 'BloomBoost Flowering',  brand: 'BloomBoost', type: 'chemical', npkRatio: '5-10-5', description: 'High-P flowering formula.', defaultDosage: 30, defaultUnit: 'ml', isActive: true, branchId: mainBranch._id,     createdBy: admin1._id },
+      { name: 'RootMax Stimulator',    brand: 'RootMax',   type: 'bio',       npkRatio: '3-15-3', description: 'Mycorrhizae root stimulant.', defaultDosage: 20, defaultUnit: 'ml', isActive: true, branchId: mainBranch._id,   createdBy: admin1._id },
+      { name: 'ShowGrow Premium',      brand: 'ShowGrow',  type: 'organic',   npkRatio: '8-4-4',  description: 'Slow-release pellets for showroom.', defaultDosage: 10, defaultUnit: 'g', isActive: true, branchId: downtownBranch._id, createdBy: admin2._id },
     ]);
   console.log('✓ Fertilizers created');
 
-  // ── 9. Plant Batches ──────────────────────────────────────────────────────
+  // ── 8. Plant Batches ──────────────────────────────────────────────────────
   console.log('  Creating plant batches…');
   const [
     batchAreca, batchSnake, batchMonstera, batchBougain, batchAloe,
     batchShowMonstera, batchDowntownPalm,
   ] = await PlantBatch.insertMany([
-    // Main Nursery
-    {
-      name: 'Areca Palm — Batch A',
-      plantType: ptAreca._id,
-      scientificName: ptAreca.scientificName,
-      category: catPalm._id,
-      quantity: 50,
-      zone: zoneA._id,
-      location: 'Row 1, Greenhouse',
-      notes: 'Supplier: Al Bustan Nurseries. Delivered Mar 2026.',
-      status: 'active',
-      branchId: mainBranch._id,
-      createdBy: admin1._id,
-    },
-    {
-      name: 'Snake Plant Collection',
-      plantType: ptSnake._id,
-      scientificName: ptSnake.scientificName,
-      category: catIndoor._id,
-      quantity: 120,
-      zone: zoneB._id,
-      location: 'Bench 3–5, Shade Area',
-      notes: 'Mix of laurentii and moonshine cultivars.',
-      status: 'active',
-      branchId: mainBranch._id,
-      createdBy: admin1._id,
-    },
-    {
-      name: 'Monstera Display Stock',
-      plantType: ptMonstera._id,
-      scientificName: ptMonstera.scientificName,
-      category: catIndoor._id,
-      quantity: 35,
-      zone: zoneA._id,
-      location: 'Centre Aisle, Greenhouse',
-      status: 'active',
-      branchId: mainBranch._id,
-      createdBy: admin1._id,
-    },
-    {
-      name: 'Bougainvillea Row 1',
-      plantType: ptBougain._id,
-      scientificName: ptBougain.scientificName,
-      category: catOutdoor._id,
-      quantity: 40,
-      zone: zoneC._id,
-      location: 'South Fence Line',
-      notes: 'Mixed pink/red/orange varieties.',
-      status: 'active',
-      branchId: mainBranch._id,
-      createdBy: admin1._id,
-    },
-    {
-      name: 'Aloe Vera Propagation',
-      plantType: ptAloe._id,
-      scientificName: ptAloe.scientificName,
-      category: catSucculent._id,
-      quantity: 200,
-      zone: zoneB._id,
-      location: 'Tray Rack B2',
-      status: 'active',
-      branchId: mainBranch._id,
-      createdBy: admin1._id,
-    },
-    // Downtown Showroom
-    {
-      name: 'Showroom Monstera Feature',
-      plantType: ptMonstera._id,
-      scientificName: ptMonstera.scientificName,
-      category: catIndoor._id,
-      quantity: 15,
-      zone: zoneSR._id,
-      location: 'Feature Wall, Ground Floor',
-      notes: 'High-visibility display stock — handle with care.',
-      status: 'active',
-      branchId: downtownBranch._id,
-      createdBy: admin2._id,
-    },
-    {
-      name: 'Premium Areca Palms — DT',
-      plantType: ptAreca._id,
-      scientificName: ptAreca.scientificName,
-      category: catPalm._id,
-      quantity: 20,
-      zone: zoneRT._id,
-      location: 'Rooftop Perimeter',
-      status: 'active',
-      branchId: downtownBranch._id,
-      createdBy: admin2._id,
-    },
+    { name: 'Areca Palm — Batch A',         plantType: ptAreca._id,   scientificName: 'Dypsis lutescens',        category: catPalm._id,      quantity: 50,  zone: zoneA._id,  location: 'Row 1, Greenhouse',          status: 'active', branchId: mainBranch._id,     createdBy: admin1._id },
+    { name: 'Snake Plant Collection',       plantType: ptSnake._id,   scientificName: 'Sansevieria trifasciata', category: catIndoor._id,    quantity: 120, zone: zoneB._id,  location: 'Bench 3–5, Shade Area',      status: 'active', branchId: mainBranch._id,     createdBy: admin1._id },
+    { name: 'Monstera Display Stock',       plantType: ptMonstera._id,scientificName: 'Monstera deliciosa',      category: catIndoor._id,    quantity: 35,  zone: zoneA._id,  location: 'Centre Aisle, Greenhouse',   status: 'active', branchId: mainBranch._id,     createdBy: admin1._id },
+    { name: 'Bougainvillea Row 1',          plantType: ptBougain._id, scientificName: 'Bougainvillea glabra',    category: catOutdoor._id,   quantity: 40,  zone: zoneC._id,  location: 'South Fence Line',           status: 'active', branchId: mainBranch._id,     createdBy: admin1._id },
+    { name: 'Aloe Vera Propagation',        plantType: ptAloe._id,    scientificName: 'Aloe barbadensis miller', category: catSucculent._id, quantity: 200, zone: zoneB._id,  location: 'Tray Rack B2',               status: 'active', branchId: mainBranch._id,     createdBy: admin1._id },
+    { name: 'Showroom Monstera Feature',    plantType: ptMonstera._id,scientificName: 'Monstera deliciosa',      category: catIndoor._id,    quantity: 15,  zone: zoneSR._id, location: 'Feature Wall, Ground Floor', status: 'active', branchId: downtownBranch._id, createdBy: admin2._id },
+    { name: 'Premium Areca Palms — DT',     plantType: ptAreca._id,   scientificName: 'Dypsis lutescens',        category: catPalm._id,      quantity: 20,  zone: zoneRT._id, location: 'Rooftop Perimeter',          status: 'active', branchId: downtownBranch._id, createdBy: admin2._id },
   ]);
   console.log('✓ Plant batches created');
 
-  // ── 10. Care Schedules ────────────────────────────────────────────────────
+  // ── 9. Care Schedules ────────────────────────────────────────────────────
   console.log('  Creating care schedules…');
-  const scheduleStart = daysAgo(30); // started a month ago
+  const scheduleStart = daysAgo(30);
 
   const schedules = await CareSchedule.insertMany([
-    // Areca Palm — Main
-    {
-      batchId: batchAreca._id, branchId: mainBranch._id,
-      careType: 'watering', frequencyDays: 3, scheduledTime: '08:00',
-      assignedTo: [emp1._id, emp2._id],
-      instructions: 'Water thoroughly until drainage. Check soil moisture first.',
-      startDate: scheduleStart, isActive: true, createdBy: admin1._id,
-    },
-    {
-      batchId: batchAreca._id, branchId: mainBranch._id,
-      careType: 'fertilizing', frequencyDays: 14, scheduledTime: '09:00',
-      assignedTo: [emp1._id],
-      instructions: 'Apply GreenGrow at 50ml per 5L water. Avoid leaf contact.',
-      recommendedFertilizers: [fertGreenGrow._id],
-      startDate: scheduleStart, isActive: true, createdBy: admin1._id,
-    },
-    // Snake Plant — Main
-    {
-      batchId: batchSnake._id, branchId: mainBranch._id,
-      careType: 'watering', frequencyDays: 7, scheduledTime: '08:00',
-      assignedTo: [emp2._id],
-      instructions: 'Water only when top 3 cm is completely dry. Do not overwater.',
-      startDate: scheduleStart, isActive: true, createdBy: admin1._id,
-    },
-    {
-      batchId: batchSnake._id, branchId: mainBranch._id,
-      careType: 'pruning', frequencyDays: 30, scheduledTime: '10:00',
-      assignedTo: [emp1._id, emp2._id],
-      instructions: 'Remove yellowed or damaged leaves at base with clean shears.',
-      startDate: scheduleStart, isActive: true, createdBy: admin1._id,
-    },
-    // Monstera — Main
-    {
-      batchId: batchMonstera._id, branchId: mainBranch._id,
-      careType: 'watering', frequencyDays: 4, scheduledTime: '08:00',
-      assignedTo: [emp1._id],
-      instructions: 'Water until drainage, then allow top 2 cm to dry before next watering.',
-      startDate: scheduleStart, isActive: true, createdBy: admin1._id,
-    },
-    {
-      batchId: batchMonstera._id, branchId: mainBranch._id,
-      careType: 'fertilizing', frequencyDays: 21, scheduledTime: '09:00',
-      assignedTo: [emp1._id],
-      instructions: 'BloomBoost at 30ml per 5L. Apply monthly during growing season only.',
-      recommendedFertilizers: [fertBloomBoost._id],
-      startDate: scheduleStart, isActive: true, createdBy: admin1._id,
-    },
-    // Bougainvillea — Main
-    {
-      batchId: batchBougain._id, branchId: mainBranch._id,
-      careType: 'watering', frequencyDays: 2, scheduledTime: '07:00',
-      assignedTo: [emp2._id],
-      instructions: 'Deep water at base only. Avoid wetting foliage to prevent fungal issues.',
-      startDate: scheduleStart, isActive: true, createdBy: admin1._id,
-    },
-    {
-      batchId: batchBougain._id, branchId: mainBranch._id,
-      careType: 'pruning', frequencyDays: 30, scheduledTime: '10:00',
-      assignedTo: [emp1._id, emp2._id],
-      instructions: 'Hard prune after flowering. Wear gloves — thorns are sharp.',
-      startDate: scheduleStart, isActive: true, createdBy: admin1._id,
-    },
-    // Aloe Vera — Main
-    {
-      batchId: batchAloe._id, branchId: mainBranch._id,
-      careType: 'watering', frequencyDays: 10, scheduledTime: '08:00',
-      assignedTo: [emp2._id],
-      instructions: 'Soak and dry method. Water deeply, wait until soil is bone dry.',
-      startDate: scheduleStart, isActive: true, createdBy: admin1._id,
-    },
-    // Showroom Monstera — Downtown
-    {
-      batchId: batchShowMonstera._id, branchId: downtownBranch._id,
-      careType: 'watering', frequencyDays: 5, scheduledTime: '09:00',
-      assignedTo: [emp3._id],
-      instructions: 'Water carefully, avoid spilling on showroom floor. Use drip tray.',
-      startDate: scheduleStart, isActive: true, createdBy: admin2._id,
-    },
-    // Downtown Areca — Downtown
-    {
-      batchId: batchDowntownPalm._id, branchId: downtownBranch._id,
-      careType: 'watering', frequencyDays: 3, scheduledTime: '08:30',
-      assignedTo: [emp3._id],
-      instructions: 'Water rooftop plants early morning before peak heat.',
-      startDate: scheduleStart, isActive: true, createdBy: admin2._id,
-    },
-    {
-      batchId: batchDowntownPalm._id, branchId: downtownBranch._id,
-      careType: 'fertilizing', frequencyDays: 14, scheduledTime: '09:00',
-      assignedTo: [emp3._id],
-      instructions: 'ShowGrow Premium — 10g per pot. Work into topsoil gently.',
-      recommendedFertilizers: [fertShowGrow._id],
-      startDate: scheduleStart, isActive: true, createdBy: admin2._id,
-    },
+    // Areca Palm — Main (emp1 + emp2)
+    { batchId: batchAreca._id, branchId: mainBranch._id, careType: 'watering',    frequencyDays: 3,  scheduledTime: '08:00', assignedTo: [emp1._id, emp2._id],        instructions: 'Water thoroughly until drainage.',                            startDate: scheduleStart, isActive: true, createdBy: admin1._id },
+    { batchId: batchAreca._id, branchId: mainBranch._id, careType: 'fertilizing', frequencyDays: 14, scheduledTime: '09:00', assignedTo: [emp1._id],                  instructions: 'GreenGrow 50ml per 5L water.',        recommendedFertilizers: [fertGreenGrow._id], startDate: scheduleStart, isActive: true, createdBy: admin1._id },
+    // Snake Plant — Main (emp2)
+    { batchId: batchSnake._id, branchId: mainBranch._id, careType: 'watering',    frequencyDays: 7,  scheduledTime: '08:00', assignedTo: [emp2._id],                  instructions: 'Water only when top 3 cm is completely dry.',                 startDate: scheduleStart, isActive: true, createdBy: admin1._id },
+    { batchId: batchSnake._id, branchId: mainBranch._id, careType: 'pruning',     frequencyDays: 21, scheduledTime: '10:00', assignedTo: [emp1._id, emp2._id],        instructions: 'Remove yellowed or damaged leaves.',                          startDate: scheduleStart, isActive: true, createdBy: admin1._id },
+    // Monstera — Main (emp1 + emp4)
+    { batchId: batchMonstera._id, branchId: mainBranch._id, careType: 'watering', frequencyDays: 4,  scheduledTime: '08:00', assignedTo: [emp1._id, emp4._id],        instructions: 'Water until drainage, let top 2cm dry before next.',         startDate: scheduleStart, isActive: true, createdBy: admin1._id },
+    { batchId: batchMonstera._id, branchId: mainBranch._id, careType: 'fertilizing', frequencyDays: 21, scheduledTime: '09:00', assignedTo: [emp4._id],              instructions: 'BloomBoost 30ml per 5L.',             recommendedFertilizers: [fertBloomBoost._id], startDate: scheduleStart, isActive: true, createdBy: admin1._id },
+    // Bougainvillea — Main (emp2 + emp5)
+    { batchId: batchBougain._id, branchId: mainBranch._id, careType: 'watering',  frequencyDays: 2,  scheduledTime: '07:00', assignedTo: [emp2._id, emp5._id],        instructions: 'Deep water at base only. Avoid wetting foliage.',             startDate: scheduleStart, isActive: true, createdBy: admin1._id },
+    { batchId: batchBougain._id, branchId: mainBranch._id, careType: 'pruning',   frequencyDays: 21, scheduledTime: '10:00', assignedTo: [emp4._id, emp5._id],        instructions: 'Hard prune after flowering. Wear gloves.',                    startDate: scheduleStart, isActive: true, createdBy: admin1._id },
+    // Aloe Vera — Main (emp5)
+    { batchId: batchAloe._id, branchId: mainBranch._id, careType: 'watering',     frequencyDays: 10, scheduledTime: '08:00', assignedTo: [emp5._id],                  instructions: 'Soak and dry method. Wait until bone dry.',                   startDate: scheduleStart, isActive: true, createdBy: admin1._id },
+    // Downtown — emp3
+    { batchId: batchShowMonstera._id, branchId: downtownBranch._id, careType: 'watering',    frequencyDays: 5,  scheduledTime: '09:00', assignedTo: [emp3._id], instructions: 'Use drip tray. Avoid spilling on showroom floor.',             startDate: scheduleStart, isActive: true, createdBy: admin2._id },
+    { batchId: batchDowntownPalm._id, branchId: downtownBranch._id, careType: 'watering',    frequencyDays: 3,  scheduledTime: '08:30', assignedTo: [emp3._id], instructions: 'Water rooftop plants early morning before peak heat.',         startDate: scheduleStart, isActive: true, createdBy: admin2._id },
+    { batchId: batchDowntownPalm._id, branchId: downtownBranch._id, careType: 'fertilizing', frequencyDays: 14, scheduledTime: '09:00', assignedTo: [emp3._id], instructions: 'ShowGrow Premium 10g per pot.', recommendedFertilizers: [fertShowGrow._id], startDate: scheduleStart, isActive: true, createdBy: admin2._id },
   ]);
 
   const [
@@ -493,12 +291,15 @@ const seed = async () => {
     schShowMonsteraWater,
     schDtPalmWater, schDtPalmFert,
   ] = schedules;
-  void schBougainPrune; // schedule exists — cron generates tasks
   console.log('✓ Care schedules created');
 
-  // ── 11. Care Tasks ────────────────────────────────────────────────────────
-  // Seed realistic tasks: past completed, some missed, today pending, tomorrow pending.
-  // The cron will generate future tasks; these give immediate testing data.
+  // ── 10. Care Tasks ────────────────────────────────────────────────────────
+  // Employee performance profiles (probability of completing each task):
+  //   Ali Hassan  (emp1) — star performer:  95% completion
+  //   Sara Ahmed  (emp2) — good:            80% completion
+  //   Faisal Malik(emp4) — average:         65% completion
+  //   Nadia Rahman(emp5) — improving:       55% completion
+  //   Khalid Nasser(emp3)— downtown:        75% completion
   console.log('  Creating care tasks…');
 
   type TaskInsert = {
@@ -518,69 +319,66 @@ const seed = async () => {
 
   const tasks: TaskInsert[] = [];
 
-  // Helper — generate historical + today tasks for a schedule
-  const addTasks = (
+  /**
+   * completionChance: 0–1. Tasks completed by primaryCompleter.
+   * missChance: of the non-completed, some are missed (older), some still pending (recent).
+   */
+  const addTasksRich = (
     schedule: (typeof schedules)[0],
     batchId: mongoose.Types.ObjectId,
     branchId: mongoose.Types.ObjectId,
     careType: string,
     freq: number,
     assignedTo: mongoose.Types.ObjectId[],
-    completedBy: mongoose.Types.ObjectId,
+    primaryCompleter: mongoose.Types.ObjectId,
+    completionChance: number,   // 0–1
+    noteVariants: string[],
   ) => {
-    // Past 30 days — generate occurrences
-    for (let offset = 30; offset >= 0; offset -= freq) {
+    let index = 0;
+    for (let offset = 30; offset >= 1; offset -= freq) {
       const scheduledAt = daysAgo(offset);
       scheduledAt.setHours(8, 0, 0, 0);
 
-      if (offset > 2) {
-        // Old tasks — mostly completed, a couple missed
-        const isMissed = offset % (freq * 4) === 0;
+      const completed = Math.random() < completionChance;
+
+      if (completed) {
         tasks.push({
           scheduleId: schedule._id as mongoose.Types.ObjectId,
-          batchId,
-          branchId,
-          careType,
-          scheduledAt,
-          status: isMissed ? 'missed' : 'completed',
-          assignedTo,
-          completedBy: isMissed ? undefined : completedBy,
-          completedAt: isMissed ? undefined : new Date(scheduledAt.getTime() + 3_600_000),
-          notes: isMissed ? undefined : 'Done.',
-          notificationSent: true,
-          reminderSent: true,
-        });
-      } else if (offset > 0) {
-        // Yesterday — completed
-        tasks.push({
-          scheduleId: schedule._id as mongoose.Types.ObjectId,
-          batchId,
-          branchId,
-          careType,
-          scheduledAt,
+          batchId, branchId, careType, scheduledAt,
           status: 'completed',
           assignedTo,
-          completedBy,
-          completedAt: new Date(scheduledAt.getTime() + 2_700_000),
-          notes: 'Completed on schedule.',
+          completedBy: primaryCompleter,
+          completedAt: new Date(scheduledAt.getTime() + (30 + Math.floor(Math.random() * 90)) * 60_000),
+          notes: noteVariants[index % noteVariants.length],
           notificationSent: true,
           reminderSent: true,
         });
+      } else {
+        // Not completed — older tasks become missed, very recent are still pending
+        const isMissed = offset > 1;
+        tasks.push({
+          scheduleId: schedule._id as mongoose.Types.ObjectId,
+          batchId, branchId, careType, scheduledAt,
+          status: isMissed ? 'missed' : 'pending',
+          assignedTo,
+          notificationSent: true,
+          reminderSent: isMissed,
+        });
       }
+      index++;
     }
 
-    // Today — pending
-    const todayTask = todayAt(8);
+    // Today — pending (or overdue if hour already passed)
+    const todayScheduled = todayAt(8);
+    const isOverdue = new Date() > todayScheduled;
     tasks.push({
       scheduleId: schedule._id as mongoose.Types.ObjectId,
-      batchId,
-      branchId,
-      careType,
-      scheduledAt: todayTask,
+      batchId, branchId, careType,
+      scheduledAt: todayScheduled,
       status: 'pending',
       assignedTo,
       notificationSent: true,
-      reminderSent: false,
+      reminderSent: isOverdue,
     });
 
     // Tomorrow — pending
@@ -588,9 +386,7 @@ const seed = async () => {
     tomorrow.setHours(8, 0, 0, 0);
     tasks.push({
       scheduleId: schedule._id as mongoose.Types.ObjectId,
-      batchId,
-      branchId,
-      careType,
+      batchId, branchId, careType,
       scheduledAt: tomorrow,
       status: 'pending',
       assignedTo,
@@ -599,44 +395,44 @@ const seed = async () => {
     });
   };
 
-  // Main Nursery schedules
-  addTasks(schArecaWater,   batchAreca._id,    mainBranch._id,     'watering',    3,  [emp1._id, emp2._id], emp1._id);
-  addTasks(schArecaFert,    batchAreca._id,    mainBranch._id,     'fertilizing', 14, [emp1._id],           emp1._id);
-  addTasks(schSnakeWater,   batchSnake._id,    mainBranch._id,     'watering',    7,  [emp2._id],           emp2._id);
-  addTasks(schSnakePrune,   batchSnake._id,    mainBranch._id,     'pruning',     30, [emp1._id, emp2._id], emp2._id);
-  addTasks(schMonsteraWater,batchMonstera._id, mainBranch._id,     'watering',    4,  [emp1._id],           emp1._id);
-  addTasks(schMonsteraFert, batchMonstera._id, mainBranch._id,     'fertilizing', 21, [emp1._id],           emp1._id);
-  addTasks(schBougainWater, batchBougain._id,  mainBranch._id,     'watering',    2,  [emp2._id],           emp2._id);
-  addTasks(schAloeWater,    batchAloe._id,     mainBranch._id,     'watering',    10, [emp2._id],           emp2._id);
+  // ── Main Nursery tasks ────────────────────────────────────────────────────
 
-  // Downtown schedules
-  addTasks(schShowMonsteraWater, batchShowMonstera._id, downtownBranch._id, 'watering',    5,  [emp3._id], emp3._id);
-  addTasks(schDtPalmWater,       batchDowntownPalm._id, downtownBranch._id, 'watering',    3,  [emp3._id], emp3._id);
-  addTasks(schDtPalmFert,        batchDowntownPalm._id, downtownBranch._id, 'fertilizing', 14, [emp3._id], emp3._id);
+  // Ali Hassan — star performer (95%)
+  addTasksRich(schArecaWater,    batchAreca._id,    mainBranch._id,  'watering',    3,  [emp1._id, emp2._id],  emp1._id, 0.95, ['Watered thoroughly.', 'Done — soil draining well.', 'Complete.']);
+  addTasksRich(schArecaFert,     batchAreca._id,    mainBranch._id,  'fertilizing', 14, [emp1._id],            emp1._id, 0.95, ['GreenGrow applied.', 'Fertilizer done — leaves look healthy.']);
+  addTasksRich(schMonsteraWater, batchMonstera._id, mainBranch._id,  'watering',    4,  [emp1._id, emp4._id],  emp1._id, 0.92, ['Watered until drainage.', 'Done.', 'All plants checked.']);
+
+  // Sara Ahmed — good performer (80%)
+  addTasksRich(schSnakeWater,    batchSnake._id,    mainBranch._id,  'watering',    7,  [emp2._id],            emp2._id, 0.80, ['Checked moisture — watered.', 'Soil was very dry — deep watered.', 'Done.']);
+  addTasksRich(schSnakePrune,    batchSnake._id,    mainBranch._id,  'pruning',     21, [emp1._id, emp2._id],  emp2._id, 0.80, ['Removed 3 yellow leaves.', 'Minor pruning done.']);
+  addTasksRich(schBougainWater,  batchBougain._id,  mainBranch._id,  'watering',    2,  [emp2._id, emp5._id],  emp2._id, 0.78, ['Base watered only.', 'Done — foliage dry.', 'Complete.']);
+
+  // Faisal Malik — average (65%)
+  addTasksRich(schMonsteraFert,  batchMonstera._id, mainBranch._id,  'fertilizing', 21, [emp4._id],            emp4._id, 0.65, ['BloomBoost applied.', 'Done.']);
+  addTasksRich(schBougainPrune,  batchBougain._id,  mainBranch._id,  'pruning',     21, [emp4._id, emp5._id],  emp4._id, 0.65, ['Pruned lower branches.', 'Done — wore gloves.']);
+
+  // Nadia Rahman — below average (55%)
+  addTasksRich(schAloeWater,     batchAloe._id,     mainBranch._id,  'watering',    10, [emp5._id],            emp5._id, 0.55, ['Soil bone dry — deep watered.', 'Done.']);
+
+  // ── Downtown tasks ────────────────────────────────────────────────────────
+  // Khalid Nasser — decent (75%)
+  addTasksRich(schShowMonsteraWater, batchShowMonstera._id, downtownBranch._id, 'watering',    5,  [emp3._id], emp3._id, 0.75, ['Careful watering — no spills.', 'Done.', 'Drip tray used.']);
+  addTasksRich(schDtPalmWater,       batchDowntownPalm._id, downtownBranch._id, 'watering',    3,  [emp3._id], emp3._id, 0.75, ['Early morning watering done.', 'Complete.', 'Done.']);
+  addTasksRich(schDtPalmFert,        batchDowntownPalm._id, downtownBranch._id, 'fertilizing', 14, [emp3._id], emp3._id, 0.75, ['ShowGrow applied evenly.', 'Done.']);
 
   const insertedTasks = await CareTask.insertMany(tasks, { ordered: false });
   console.log(`✓ Care tasks created (${insertedTasks.length} total)`);
 
-  // ── 12. FertilizerUsage records ──────────────────────────────────────────
+  // ── 11. FertilizerUsage ──────────────────────────────────────────────────
   console.log('  Creating fertilizer usage records…');
   const completedFertilizingTasks = insertedTasks.filter(
     (t) => t.careType === 'fertilizing' && t.status === 'completed' && t.completedBy,
   );
 
-  const fertilizerUsageDocs = completedFertilizingTasks.map((task) => {
-    // Pick the fertilizer associated with this task's schedule
+  const fertUsageDocs = completedFertilizingTasks.map((task) => {
     let fertilizerId = fertGreenGrow._id;
-    if (
-      task.scheduleId.toString() === schArecaFert._id.toString() ||
-      task.scheduleId.toString() === schDtPalmFert._id.toString()
-    ) {
-      fertilizerId = task.branchId.toString() === mainBranch._id.toString()
-        ? fertGreenGrow._id
-        : fertShowGrow._id;
-    } else if (task.scheduleId.toString() === schMonsteraFert._id.toString()) {
-      fertilizerId = fertBloomBoost._id;
-    }
-
+    if (task.scheduleId.toString() === schMonsteraFert._id.toString())  fertilizerId = fertBloomBoost._id;
+    if (task.scheduleId.toString() === schDtPalmFert._id.toString())    fertilizerId = fertShowGrow._id;
     return {
       taskId: task._id,
       scheduleId: task.scheduleId,
@@ -645,31 +441,41 @@ const seed = async () => {
       completedBy: task.completedBy,
       recordedAt: task.completedAt ?? task.scheduledAt,
       usages: [{ fertilizerId, quantity: 50, unit: 'ml' as const }],
-      notes: 'Applied as per schedule instructions.',
+      notes: 'Applied per schedule instructions.',
     };
   });
 
-  if (fertilizerUsageDocs.length > 0) {
-    await FertilizerUsage.insertMany(fertilizerUsageDocs, { ordered: false });
+  if (fertUsageDocs.length > 0) {
+    await FertilizerUsage.insertMany(fertUsageDocs, { ordered: false });
   }
-  console.log(`✓ Fertilizer usage records created (${fertilizerUsageDocs.length} total)`);
+  console.log(`✓ Fertilizer usage created (${fertUsageDocs.length} total)`);
 
-  // ── 13. Print summary ─────────────────────────────────────────────────────
+  // ── 12. Stats summary ────────────────────────────────────────────────────
+  const total     = insertedTasks.length;
+  const completed = insertedTasks.filter((t) => t.status === 'completed').length;
+  const missed    = insertedTasks.filter((t) => t.status === 'missed').length;
+  const pending   = insertedTasks.filter((t) => t.status === 'pending').length;
+
   console.log('\n════════════════════════════════════════════════════════');
-  console.log('  SEED COMPLETE — Login credentials (password for all):');
-  console.log(`  Password: ${PASSWORD}`);
+  console.log('  SEED COMPLETE');
   console.log('────────────────────────────────────────────────────────');
-  console.log('  SUPER ADMIN');
-  console.log(`    ${ACCOUNTS.superAdmin.email} — ${ACCOUNTS.superAdmin.name}`);
-  console.log('  ADMINS');
-  console.log(`    ${ACCOUNTS.admin1.email} — ${ACCOUNTS.admin1.name} (Main Nursery)`);
-  console.log(`    ${ACCOUNTS.admin2.email} — ${ACCOUNTS.admin2.name} (Downtown)`);
-  console.log('  EMPLOYEES');
-  console.log(`    ${ACCOUNTS.emp1.email} — ${ACCOUNTS.emp1.name} (Main Nursery)`);
-  console.log(`    ${ACCOUNTS.emp2.email} — ${ACCOUNTS.emp2.name} (Main Nursery)`);
-  console.log(`    ${ACCOUNTS.emp3.email} — ${ACCOUNTS.emp3.name} (Downtown)`);
+  console.log(`  Tasks: ${total} total — ${completed} completed, ${missed} missed, ${pending} pending`);
+  console.log(`  Completion rate: ${Math.round((completed / (total - pending)) * 100)}%`);
+  console.log('────────────────────────────────────────────────────────');
+  console.log('  SUPER ADMINS  (password: Finecity@123)');
+  console.log('    iroohbangash@gmail.com  — Irooh Bangash');
+  console.log('    awaisjarral37@gmail.com — Awais Jarral');
+  console.log('  BRANCH MANAGERS');
+  console.log('    asadhanzlah@gmail.com   — Asad Hanzlah   (Main Nursery)');
+  console.log('    omar.admin@finecity.ae  — Omar Al Farooq (Downtown)');
+  console.log('  EMPLOYEES (Main Nursery)');
+  console.log('    ali.hassan@finecity.ae     — Ali Hassan   (~95% rate) ← top performer');
+  console.log('    sara.ahmed@finecity.ae     — Sara Ahmed   (~80% rate)');
+  console.log('    faisal.malik@finecity.ae   — Faisal Malik (~65% rate)');
+  console.log('    nadia.rahman@finecity.ae   — Nadia Rahman (~55% rate)');
+  console.log('  EMPLOYEES (Downtown)');
+  console.log('    khalid.nasser@finecity.ae  — Khalid Nasser (~75% rate)');
   console.log('════════════════════════════════════════════════════════\n');
-
 };
 
 seed()
