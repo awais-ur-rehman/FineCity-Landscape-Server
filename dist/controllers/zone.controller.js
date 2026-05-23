@@ -1,9 +1,17 @@
 import Zone from '../models/Zone.js';
 import apiResponse from '../utils/apiResponse.js';
 import ApiError from '../utils/apiError.js';
+/** Assert that the requesting admin has access to the given branchId. */
+const assertBranchAccess = (req, branchId) => {
+    if (req.user?.role === 'super_admin')
+        return;
+    const hasAccess = req.user?.branches.some((b) => b.toString() === branchId);
+    if (!hasAccess) {
+        throw ApiError.forbidden('You do not manage the branch for this zone');
+    }
+};
 export const listZones = async (req, res, next) => {
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const filter = { isActive: true };
         if (req.user?.role === 'super_admin') {
             if (req.query.branchId) {
@@ -31,6 +39,7 @@ export const getZone = async (req, res, next) => {
         if (!zone) {
             throw ApiError.notFound('Zone not found');
         }
+        assertBranchAccess(req, zone.branchId.toString());
         return apiResponse(res, 200, 'Zone retrieved successfully', zone);
     }
     catch (error) {
@@ -39,6 +48,8 @@ export const getZone = async (req, res, next) => {
 };
 export const createZone = async (req, res, next) => {
     try {
+        const { branchId } = req.body;
+        assertBranchAccess(req, branchId);
         const zone = await Zone.create(req.body);
         return apiResponse(res, 201, 'Zone created successfully', zone);
     }
@@ -48,13 +59,15 @@ export const createZone = async (req, res, next) => {
 };
 export const updateZone = async (req, res, next) => {
     try {
+        const existing = await Zone.findById(req.params.id);
+        if (!existing) {
+            throw ApiError.notFound('Zone not found');
+        }
+        assertBranchAccess(req, existing.branchId.toString());
         const zone = await Zone.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
             runValidators: true,
         });
-        if (!zone) {
-            throw ApiError.notFound('Zone not found');
-        }
         return apiResponse(res, 200, 'Zone updated successfully', zone);
     }
     catch (error) {
@@ -63,10 +76,12 @@ export const updateZone = async (req, res, next) => {
 };
 export const deleteZone = async (req, res, next) => {
     try {
-        const zone = await Zone.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
-        if (!zone) {
+        const existing = await Zone.findById(req.params.id);
+        if (!existing) {
             throw ApiError.notFound('Zone not found');
         }
+        assertBranchAccess(req, existing.branchId.toString());
+        await Zone.findByIdAndUpdate(req.params.id, { isActive: false });
         return apiResponse(res, 200, 'Zone deactivated successfully');
     }
     catch (error) {

@@ -36,6 +36,12 @@ const careScheduleSchema = new Schema({
         type: String,
         trim: true,
     },
+    recommendedFertilizers: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: 'Fertilizer',
+        },
+    ],
     startDate: {
         type: Date,
         required: true,

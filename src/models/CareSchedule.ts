@@ -9,6 +9,7 @@ export interface ICareSchedule extends Document {
   scheduledTime: string;
   assignedTo: mongoose.Types.ObjectId[];
   instructions?: string;
+  recommendedFertilizers?: mongoose.Types.ObjectId[];
   startDate: Date;
   lastGeneratedDate?: Date;
   isActive: boolean;
@@ -54,6 +55,12 @@ const careScheduleSchema = new Schema<ICareSchedule>(
       type: String,
       trim: true,
     },
+    recommendedFertilizers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Fertilizer',
+      },
+    ],
     startDate: {
       type: Date,
       required: true,

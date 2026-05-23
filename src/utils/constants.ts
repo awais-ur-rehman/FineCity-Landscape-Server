@@ -1,11 +1,12 @@
 /** @enum {string} User roles */
 export const ROLES = {
-  ADMIN: 'admin',
+  SUPER_ADMIN: 'super_admin',
+  BRANCH_MANAGER: 'branch_manager',
   EMPLOYEE: 'employee',
 };
 
 /** @enum {string} All valid roles */
-export const ALL_ROLES = [ROLES.ADMIN, ROLES.EMPLOYEE];
+export const ALL_ROLES = [ROLES.SUPER_ADMIN, ROLES.BRANCH_MANAGER, ROLES.EMPLOYEE];
 
 /** OTP configuration */
 export const OTP_LENGTH = 6;
@@ -21,7 +22,7 @@ export const RATE_LIMIT_GENERAL = { windowMs: 15 * 60 * 1000, max: 100 };
 export const RATE_LIMIT_OTP = { windowMs: 15 * 60 * 1000, max: 3 };
 
 /** Care types */
-export const CARE_TYPES = ['watering', 'fertilizer', 'pruning', 'repotting', 'general'];
+export const CARE_TYPES = ['watering', 'fertilizing', 'pruning', 'pest_control', 'repotting'];
 
 /** Task statuses */
 export const TASK_STATUSES = ['pending', 'completed', 'missed', 'skipped'];

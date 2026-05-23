@@ -1,32 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
-import * as otpService from '../services/otp.service.js';
 import * as authService from '../services/auth.service.js';
+import AuditLog from '../models/AuditLog.js';
 import apiResponse from '../utils/apiResponse.js';
 
 /**
- * POST /auth/send-otp
- * Send OTP to the given email.
+ * POST /auth/login
+ * Authenticate with email + password, return JWT pair.
  */
-export const sendOtp = async (req: Request, res: Response, next: NextFunction) => {
+export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email } = req.body;
-    await otpService.sendOtp(email);
-    return apiResponse(res, 200, 'OTP sent successfully');
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * POST /auth/verify-otp
- * Verify OTP and return JWT pair.
- */
-export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { email, otp } = req.body;
-    await otpService.verifyOtp(email, otp);
-    const data = await authService.authenticateUser(email);
-    return apiResponse(res, 200, 'OTP verified successfully', data);
+    const { email, password } = req.body;
+    const data = await authService.loginWithPassword(email, password);
+    AuditLog.create({
+      action: 'LOGIN',
+      entity: 'User',
+      entityId: data.user._id?.toString() ?? '',
+      performedBy: data.user._id,
+      details: { email, role: data.user.role },
+    }).catch(() => {});
+    return apiResponse(res, 200, 'Login successful', data);
   } catch (error) {
     next(error);
   }
@@ -34,7 +26,7 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
 
 /**
  * POST /auth/refresh-token
- * Issue new token pair using refresh token.
+ * Issue new token pair using a valid refresh token.
  */
 export const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -48,7 +40,7 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
 
 /**
  * POST /auth/logout
- * Clear refresh token.
+ * Clear refresh token — invalidate session.
  */
 export const logout = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -56,6 +48,20 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
       await authService.logoutUser(req.user._id.toString());
     }
     return apiResponse(res, 200, 'Logged out successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /auth/change-password
+ * Authenticated user changes their own password.
+ */
+export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    await authService.changePassword(req.user!._id.toString(), currentPassword, newPassword);
+    return apiResponse(res, 200, 'Password changed successfully');
   } catch (error) {
     next(error);
   }

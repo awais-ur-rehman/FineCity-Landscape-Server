@@ -7,6 +7,7 @@ const OVERDUE_HOURS = 2;
 const DUE_SOON_MINUTES = 30;
 const REMINDER_MIN_MINUTES = 10;
 const REMINDER_MAX_MINUTES = 20;
+const SCHEDULE_BATCH_SIZE = 100;
 const addDays = (date, days) => {
     const result = new Date(date);
     result.setUTCDate(result.getUTCDate() + days);
@@ -26,52 +27,70 @@ const toMidnightUTC = (date) => {
 export const generateTasks = async () => {
     const now = new Date();
     const endDate = addDays(now, LOOKAHEAD_DAYS);
-    const schedules = await CareSchedule.find({ isActive: true });
+    const genEnd = toMidnightUTC(endDate);
     let totalCreated = 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const newTasks = [];
-    for (const schedule of schedules) {
-        const genStart = schedule.lastGeneratedDate
-            ? addDays(toMidnightUTC(schedule.lastGeneratedDate), 1)
-            : toMidnightUTC(schedule.startDate);
-        const genEnd = toMidnightUTC(endDate);
-        if (genStart > genEnd)
-            continue;
-        const scheduleStart = toMidnightUTC(schedule.startDate);
-        const diffMs = genStart.getTime() - scheduleStart.getTime();
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        const freqDays = schedule.frequencyDays;
-        let offsetDays = diffDays < 0 ? 0 : diffDays;
-        const remainder = offsetDays % freqDays;
-        if (remainder !== 0) {
-            offsetDays += freqDays - remainder;
-        }
-        let current = addDays(scheduleStart, offsetDays);
-        while (current <= genEnd) {
-            const scheduledAt = combineDateAndTime(current, schedule.scheduledTime);
-            try {
-                const task = await CareTask.create({
+    let offset = 0;
+    // Process schedules in batches to avoid loading entire collection into memory
+    while (true) {
+        const schedules = await CareSchedule.find({ isActive: true })
+            .skip(offset)
+            .limit(SCHEDULE_BATCH_SIZE)
+            .lean();
+        if (schedules.length === 0)
+            break;
+        for (const schedule of schedules) {
+            const genStart = schedule.lastGeneratedDate
+                ? addDays(toMidnightUTC(schedule.lastGeneratedDate), 1)
+                : toMidnightUTC(schedule.startDate);
+            if (genStart > genEnd)
+                continue;
+            const scheduleStart = toMidnightUTC(schedule.startDate);
+            const diffDays = Math.floor((genStart.getTime() - scheduleStart.getTime()) / (1000 * 60 * 60 * 24));
+            const freqDays = schedule.frequencyDays;
+            let offsetDays = diffDays < 0 ? 0 : diffDays;
+            const remainder = offsetDays % freqDays;
+            if (remainder !== 0)
+                offsetDays += freqDays - remainder;
+            let current = addDays(scheduleStart, offsetDays);
+            const taskInserts = [];
+            while (current <= genEnd) {
+                taskInserts.push({
                     scheduleId: schedule._id,
                     batchId: schedule.batchId,
                     branchId: schedule.branchId,
                     careType: schedule.careType,
-                    scheduledAt,
+                    scheduledAt: combineDateAndTime(current, schedule.scheduledTime),
                     assignedTo: schedule.assignedTo,
+                    selectedFertilizers: schedule.recommendedFertilizers || [],
                 });
-                totalCreated += 1;
-                newTasks.push(task);
+                current = addDays(current, freqDays);
             }
-            catch (err) {
-                if (err.code !== 11000) {
-                    console.error('Task creation error:', err.message);
+            // insertMany with ordered:false so duplicate key errors skip without aborting the batch
+            if (taskInserts.length > 0) {
+                try {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const result = (await CareTask.insertMany(taskInserts, { ordered: false }));
+                    totalCreated += result.length;
+                }
+                catch (err) {
+                    // BulkWriteError: some docs may have inserted, some skipped due to unique constraint
+                    if (err.code === 11000) {
+                        const inserted = err.insertedDocs?.length ?? 0;
+                        totalCreated += inserted;
+                    }
+                    else {
+                        console.error('Task batch insert error:', err.message);
+                    }
                 }
             }
-            current = addDays(current, freqDays);
+            // Update lastGeneratedDate for this schedule
+            await CareSchedule.updateOne({ _id: schedule._id }, { lastGeneratedDate: genEnd });
         }
-        schedule.lastGeneratedDate = genEnd;
-        await schedule.save();
+        offset += SCHEDULE_BATCH_SIZE;
+        if (schedules.length < SCHEDULE_BATCH_SIZE)
+            break;
     }
-    return { created: totalCreated, schedules: schedules.length, newTasks };
+    return { created: totalCreated };
 };
 export const notifyDueTasks = async () => {
     const now = new Date();
@@ -80,20 +99,26 @@ export const notifyDueTasks = async () => {
         scheduledAt: { $gte: now, $lte: soonCutoff },
         status: 'pending',
         notificationSent: false,
-    });
-    let sentCount = 0;
-    for (const task of dueTasks) {
-        const batch = await PlantBatch.findById(task.batchId);
+    }).lean();
+    if (dueTasks.length === 0)
+        return 0;
+    // Batch-load all needed plant batches — eliminates N+1
+    const batchIds = [...new Set(dueTasks.map((t) => t.batchId.toString()))];
+    const batches = await PlantBatch.find({ _id: { $in: batchIds } }).lean();
+    const batchMap = new Map(batches.map((b) => [b._id.toString(), b]));
+    // Process all tasks in parallel
+    const results = await Promise.allSettled(dueTasks.map(async (task) => {
+        const batch = batchMap.get(task.batchId.toString());
         if (!batch)
-            continue;
+            return 0;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tokens = await notificationService.getTokensForUsers(task.assignedTo);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sent = await notificationService.sendTaskDueNotification(task, batch, tokens);
-        task.notificationSent = true;
-        await task.save();
-        sentCount += sent;
-    }
-    return sentCount;
+        await CareTask.updateOne({ _id: task._id }, { notificationSent: true });
+        return sent;
+    }));
+    return results.reduce((sum, r) => sum + (r.status === 'fulfilled' ? r.value : 0), 0);
 };
 export const sendAdvanceReminders = async () => {
     const now = new Date();
@@ -103,29 +128,29 @@ export const sendAdvanceReminders = async () => {
         scheduledAt: { $gte: minCutoff, $lte: maxCutoff },
         status: 'pending',
         reminderSent: false,
-    });
-    let sentCount = 0;
-    for (const task of tasks) {
-        const batch = await PlantBatch.findById(task.batchId);
+    }).lean();
+    if (tasks.length === 0)
+        return 0;
+    // Batch-load all needed plant batches — eliminates N+1
+    const batchIds = [...new Set(tasks.map((t) => t.batchId.toString()))];
+    const batches = await PlantBatch.find({ _id: { $in: batchIds } }).lean();
+    const batchMap = new Map(batches.map((b) => [b._id.toString(), b]));
+    const results = await Promise.allSettled(tasks.map(async (task) => {
+        const batch = batchMap.get(task.batchId.toString());
         if (!batch)
-            continue;
+            return 0;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tokens = await notificationService.getTokensForUsers(task.assignedTo);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sent = await notificationService.sendTaskReminderNotification(task, batch, tokens);
-        task.reminderSent = true;
-        await task.save();
-        sentCount += sent;
-    }
-    return sentCount;
+        await CareTask.updateOne({ _id: task._id }, { reminderSent: true });
+        return sent;
+    }));
+    return results.reduce((sum, r) => sum + (r.status === 'fulfilled' ? r.value : 0), 0);
 };
 export const markOverdueTasks = async () => {
     const cutoff = new Date(Date.now() - OVERDUE_HOURS * 60 * 60 * 1000);
-    const result = await CareTask.updateMany({
-        scheduledAt: { $lt: cutoff },
-        status: 'pending',
-    }, {
-        status: 'missed',
-    });
+    const result = await CareTask.updateMany({ scheduledAt: { $lt: cutoff }, status: 'pending' }, { status: 'missed' });
     return result.modifiedCount;
 };
 export const generateTasksForSchedule = async (scheduleId) => {
@@ -133,32 +158,40 @@ export const generateTasksForSchedule = async (scheduleId) => {
     if (!schedule || !schedule.isActive)
         return 0;
     const now = new Date();
-    const endDate = addDays(now, LOOKAHEAD_DAYS);
     const genStart = toMidnightUTC(schedule.startDate);
-    const genEnd = toMidnightUTC(endDate);
-    let created = 0;
+    const genEnd = toMidnightUTC(addDays(now, LOOKAHEAD_DAYS));
+    const taskInserts = [];
     let current = new Date(genStart);
     while (current <= genEnd) {
         const scheduledAt = combineDateAndTime(current, schedule.scheduledTime);
         if (scheduledAt >= toMidnightUTC(now)) {
-            try {
-                await CareTask.create({
-                    scheduleId: schedule._id,
-                    batchId: schedule.batchId,
-                    branchId: schedule.branchId,
-                    careType: schedule.careType,
-                    scheduledAt,
-                    assignedTo: schedule.assignedTo,
-                });
-                created += 1;
-            }
-            catch (err) {
-                if (err.code !== 11000) {
-                    console.error('Task creation error:', err.message);
-                }
-            }
+            taskInserts.push({
+                scheduleId: schedule._id,
+                batchId: schedule.batchId,
+                branchId: schedule.branchId,
+                careType: schedule.careType,
+                scheduledAt,
+                assignedTo: schedule.assignedTo,
+                selectedFertilizers: schedule.recommendedFertilizers || [],
+            });
         }
         current = addDays(current, schedule.frequencyDays);
+    }
+    let created = 0;
+    if (taskInserts.length > 0) {
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const result = (await CareTask.insertMany(taskInserts, { ordered: false }));
+            created = result.length;
+        }
+        catch (err) {
+            if (err.code === 11000) {
+                created = err.insertedDocs?.length ?? 0;
+            }
+            else {
+                console.error('generateTasksForSchedule error:', err.message);
+            }
+        }
     }
     schedule.lastGeneratedDate = genEnd;
     await schedule.save();

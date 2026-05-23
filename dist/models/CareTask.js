@@ -43,6 +43,12 @@ const careTaskSchema = new Schema({
     completedAt: {
         type: Date,
     },
+    selectedFertilizers: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: 'Fertilizer',
+        },
+    ],
     skippedBy: {
         type: Schema.Types.ObjectId,
         ref: 'User',
@@ -54,6 +60,10 @@ const careTaskSchema = new Schema({
     notes: {
         type: String,
         trim: true,
+    },
+    photoUrls: {
+        type: [String],
+        default: [],
     },
     notificationSent: {
         type: Boolean,
