@@ -36,13 +36,23 @@ export const sync = async (req, res, next) => {
                 completionResults.push({ taskId, status: 'completed' });
             }
         }
-        // 2. Query tasks updated since lastSyncAt for this employee
+        // 2. Query tasks updated since lastSyncAt for this employee (scoped to their current branch)
         const sinceDate = lastSyncAt ? new Date(lastSyncAt) : new Date(0);
+        const branchFilter = req.user?.currentBranch ? { branchId: req.user.currentBranch } : {};
         const tasks = await CareTask.find({
             assignedTo: userId,
             updatedAt: { $gte: sinceDate },
+            ...branchFilter,
         })
-            .populate('batchId', 'name plantType zone location imageUrl')
+            .populate({
+            path: 'batchId',
+            select: 'name zone location imageUrl',
+            populate: [
+                { path: 'plantType', select: 'name scientificName' },
+                { path: 'zone', select: 'name code' },
+                { path: 'category', select: 'name slug' },
+            ]
+        })
             .populate('scheduleId', 'careType scheduledTime instructions')
             .sort({ scheduledAt: 1 });
         // 3. Collect unique batchIds from those tasks and fetch batches
@@ -50,8 +60,11 @@ export const sync = async (req, res, next) => {
         const batchIds = [...new Set(tasks.map((t) => t.batchId?._id?.toString()).filter(Boolean))];
         const batches = batchIds.length > 0
             ? await PlantBatch.find({ _id: { $in: batchIds }, isDeleted: false })
+                .populate('plantType', 'name scientificName')
+                .populate('zone', 'name code')
+                .populate('category', 'name slug')
             : [];
-        // 4. Active schedules assigned to this employee
+        // 4. Active schedules assigned to this employee (branch-scoped)
         const schedules = await CareSchedule.find({
             $or: [
                 { assignedTo: userId },
@@ -59,8 +72,16 @@ export const sync = async (req, res, next) => {
             ],
             isActive: true,
             updatedAt: { $gte: sinceDate },
+            ...branchFilter,
         })
-            .populate('batchId', 'name plantType zone location');
+            .populate({
+            path: 'batchId',
+            select: 'name zone location',
+            populate: [
+                { path: 'plantType', select: 'name scientificName' },
+                { path: 'zone', select: 'name code' },
+            ]
+        });
         // 5. Update user.lastSyncAt
         await User.findByIdAndUpdate(userId, { lastSyncAt: syncedAt });
         return apiResponse(res, 200, 'Sync completed successfully', {

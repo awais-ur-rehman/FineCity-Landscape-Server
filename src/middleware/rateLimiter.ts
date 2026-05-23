@@ -1,4 +1,4 @@
-import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+import rateLimit from 'express-rate-limit';
 import { RATE_LIMIT_GENERAL, RATE_LIMIT_OTP } from '../utils/constants.js';
 
 /**
@@ -17,19 +17,14 @@ export const generalLimiter = rateLimit({
 });
 
 /**
- * OTP rate limiter: 3 requests per 15 minutes per email.
- * Uses email from request body as key, falls back to IP.
+ * Login rate limiter: 3 requests per 15 minutes per IP.
  */
 export const otpLimiter = rateLimit({
   windowMs: RATE_LIMIT_OTP.windowMs,
   limit: RATE_LIMIT_OTP.max,
-  keyGenerator: (req, res) => {
-    if (req.body?.email) return req.body.email;
-    return ipKeyGenerator(req, res);
-  },
   message: {
     success: false,
-    message: 'Too many OTP requests, please try again after 15 minutes',
+    message: 'Too many login attempts, please try again after 15 minutes',
     error: { code: 'RATE_LIMIT_EXCEEDED' },
   },
   standardHeaders: true,

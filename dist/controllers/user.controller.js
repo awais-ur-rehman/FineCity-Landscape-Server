@@ -1,4 +1,6 @@
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import AuditLog from '../models/AuditLog.js';
 import apiResponse from '../utils/apiResponse.js';
 import ApiError from '../utils/apiError.js';
 /**
@@ -7,13 +9,17 @@ import ApiError from '../utils/apiError.js';
  */
 export const listUsers = async (req, res, next) => {
     try {
-        const { role, search, page = '1', limit = '20' } = req.query;
-        const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+        const { role, search, page = '1', limit = '20', branchId } = req.query;
+        const safeLimit = Math.min(parseInt(limit, 10) || 20, 100);
+        const skip = (parseInt(page, 10) - 1) * safeLimit;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const filter = { isActive: true };
-        // Restrict Admin to their branches
+        // branch_manager scoped to their own branches; super_admin can filter by branchId param
         if (req.user?.role !== 'super_admin') {
             filter.branches = { $in: req.user?.branches };
+        }
+        else if (branchId) {
+            filter.branches = branchId;
         }
         if (role) {
             filter.role = role;
@@ -26,11 +32,10 @@ export const listUsers = async (req, res, next) => {
         }
         const [users, total] = await Promise.all([
             User.find(filter)
-                .select('-refreshToken')
                 .populate('branches', 'name code')
                 .populate('currentBranch', 'name code')
                 .skip(skip)
-                .limit(parseInt(limit, 10))
+                .limit(safeLimit)
                 .sort({ createdAt: -1 }),
             User.countDocuments(filter),
         ]);
@@ -38,9 +43,9 @@ export const listUsers = async (req, res, next) => {
             users,
             pagination: {
                 page: parseInt(page, 10),
-                limit: parseInt(limit, 10),
+                limit: safeLimit,
                 total,
-                pages: Math.ceil(total / parseInt(limit, 10)),
+                pages: Math.ceil(total / safeLimit),
             },
         });
     }
@@ -73,26 +78,45 @@ export const getMe = async (req, res, next) => {
  */
 export const createUser = async (req, res, next) => {
     try {
-        const { email, name, phone, branches, currentBranch } = req.body;
+        const { email, name, phone, password, branches, currentBranch, role } = req.body;
         const existing = await User.findOne({ email });
         if (existing) {
             throw ApiError.badRequest('A user with this email already exists');
         }
-        if (req.user?.role !== 'super_admin') {
+        // Admins can only create employees; only super_admin can create admins
+        const assignedRole = req.user?.role === 'super_admin' ? (role || 'employee') : 'employee';
+        if (assignedRole === 'super_admin') {
+            throw ApiError.forbidden('Cannot create super_admin accounts');
+        }
+        // branch_manager must assign at least one branch they manage
+        if (req.user?.role === 'branch_manager') {
+            if (!branches?.length) {
+                throw ApiError.badRequest('You must assign at least one branch when creating a user');
+            }
             const allowed = branches.every((b) => req.user?.branches.some(ub => ub.toString() === b));
             if (!allowed) {
                 throw ApiError.forbidden('Cannot assign branches you do not manage');
             }
         }
+        const passwordHash = await bcrypt.hash(password, 12);
         const user = await User.create({
             email,
             name,
             phone,
-            branches,
+            passwordHash,
+            branches: branches || [],
             currentBranch,
-            role: 'employee',
+            role: assignedRole,
         });
-        return apiResponse(res, 201, 'Employee created successfully', user.toJSON());
+        AuditLog.create({
+            action: 'CREATE',
+            entity: 'User',
+            entityId: user._id.toString(),
+            performedBy: req.user._id,
+            branchId: (branches?.[0]) ?? req.user?.branches?.[0],
+            details: { name, email, role: assignedRole },
+        }).catch(() => { });
+        return apiResponse(res, 201, 'User created successfully', user.toJSON());
     }
     catch (error) {
         next(error);
@@ -104,26 +128,40 @@ export const createUser = async (req, res, next) => {
  */
 export const updateUser = async (req, res, next) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id;
         const updates = req.body;
         // Prevent role escalation
         delete updates.role;
-        if (req.user?.role !== 'super_admin' && updates.branches) {
-            const allowed = updates.branches.every((b) => req.user?.branches.some(ub => ub.toString() === b));
-            if (!allowed) {
-                throw ApiError.forbidden('Cannot assign branches you do not manage');
+        const target = await User.findById(id);
+        if (!target)
+            throw ApiError.notFound('User not found');
+        // Non-super_admin can only update users who share at least one branch with them
+        if (req.user?.role !== 'super_admin') {
+            const sharedBranch = target.branches.some((b) => req.user?.branches.some((ub) => ub.toString() === b.toString()));
+            if (!sharedBranch)
+                throw ApiError.forbidden('Access denied to this user');
+            if (updates.branches) {
+                const allowed = updates.branches.every((b) => req.user?.branches.some((ub) => ub.toString() === b));
+                if (!allowed)
+                    throw ApiError.forbidden('Cannot assign branches you do not manage');
             }
         }
         const user = await User.findByIdAndUpdate(id, updates, {
             returnDocument: 'after',
             runValidators: true,
         })
-            .select('-refreshToken')
             .populate('branches', 'name code')
             .populate('currentBranch', 'name code');
-        if (!user) {
+        if (!user)
             throw ApiError.notFound('User not found');
-        }
+        AuditLog.create({
+            action: 'UPDATE',
+            entity: 'User',
+            entityId: id,
+            performedBy: req.user._id,
+            branchId: user.branches?.[0] ?? req.user?.branches?.[0],
+            details: { updatedFields: Object.keys(updates) },
+        }).catch(() => { });
         return apiResponse(res, 200, 'User updated successfully', user.toJSON());
     }
     catch (error) {
@@ -161,20 +199,32 @@ export const switchBranch = async (req, res, next) => {
  */
 export const deleteUser = async (req, res, next) => {
     try {
-        const { id } = req.params;
-        const user = await User.findById(id);
-        if (!user) {
+        const user = await User.findById(req.params.id);
+        if (!user)
             throw ApiError.notFound('User not found');
-        }
         if (user.role === 'super_admin') {
             throw ApiError.forbidden('Cannot deactivate a super admin user');
         }
-        if (user.role === 'admin' && req.user.role !== 'super_admin') {
-            throw ApiError.forbidden('Only super admins can deactivate admins');
+        if (user.role === 'branch_manager' && req.user.role !== 'super_admin') {
+            throw ApiError.forbidden('Only super admins can deactivate branch managers');
+        }
+        // Non-super_admin can only deactivate users who share a branch
+        if (req.user?.role !== 'super_admin') {
+            const sharedBranch = user.branches.some((b) => req.user?.branches.some((ub) => ub.toString() === b.toString()));
+            if (!sharedBranch)
+                throw ApiError.forbidden('Access denied to this user');
         }
         user.isActive = false;
-        user.refreshToken = null;
+        user.refreshToken = undefined;
         await user.save();
+        AuditLog.create({
+            action: 'DELETE',
+            entity: 'User',
+            entityId: user._id.toString(),
+            performedBy: req.user._id,
+            branchId: user.branches?.[0] ?? req.user?.branches?.[0],
+            details: { name: user.name, email: user.email },
+        }).catch(() => { });
         return apiResponse(res, 200, 'User deactivated successfully');
     }
     catch (error) {

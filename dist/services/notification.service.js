@@ -54,7 +54,8 @@ export const sendTaskDueNotification = async (task, batch, fcmTokens) => {
     if (!isFirebaseReady() || fcmTokens.length === 0)
         return 0;
     const careLabel = task.careType.charAt(0).toUpperCase() + task.careType.slice(1);
-    const locationInfo = [batch.zone && `Zone ${batch.zone}`, batch.location]
+    const zoneName = batch.zone?.name || batch.zone?.code || (typeof batch.zone === 'string' ? batch.zone : '');
+    const locationInfo = [zoneName && `Zone ${zoneName}`, batch.location]
         .filter(Boolean)
         .join(', ');
     const message = {
@@ -77,7 +78,8 @@ export const sendTaskReminderNotification = async (task, batch, fcmTokens) => {
     if (!isFirebaseReady() || fcmTokens.length === 0)
         return 0;
     const careLabel = task.careType.charAt(0).toUpperCase() + task.careType.slice(1);
-    const locationInfo = [batch.zone && `Zone ${batch.zone}`, batch.location]
+    const zoneName = batch.zone?.name || batch.zone?.code || (typeof batch.zone === 'string' ? batch.zone : '');
+    const locationInfo = [zoneName && `Zone ${zoneName}`, batch.location]
         .filter(Boolean)
         .join(', ');
     const message = {

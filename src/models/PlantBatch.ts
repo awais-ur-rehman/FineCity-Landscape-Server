@@ -115,17 +115,6 @@ plantBatchSchema.methods.toJSON = function () {
   return obj;
 };
 
-// Pre-save hook to generate displayName
-plantBatchSchema.pre('save', async function () {
-  if (this.isModified('name') || this.isModified('zone')) {
-    // We need to populate zone to get its name/code if we want to use it in displayName
-    // But pre-save is synchronous-ish regarding 'this'.
-    // We can't easily populate 'this' inside pre-save without fetching again.
-    // For now, let's just use name.
-    this.displayName = this.name;
-  }
-});
-
 const PlantBatch = mongoose.model<IPlantBatch>('PlantBatch', plantBatchSchema);
 
 export default PlantBatch;

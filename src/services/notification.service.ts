@@ -70,11 +70,12 @@ export const getTokensForUsers = async (userIds: string[]): Promise<string[]> =>
   return users.flatMap((u) => u.fcmTokens.map((t) => t.token));
 };
 
-export const sendTaskDueNotification = async (task: ICareTask, batch: IPlantBatch, fcmTokens: string[]) => {
+export const sendTaskDueNotification = async (task: ICareTask, batch: any, fcmTokens: string[]) => {
   if (!isFirebaseReady() || fcmTokens.length === 0) return 0;
 
   const careLabel = task.careType.charAt(0).toUpperCase() + task.careType.slice(1);
-  const locationInfo = [batch.zone && `Zone ${batch.zone}`, batch.location]
+  const zoneName = batch.zone?.name || batch.zone?.code || (typeof batch.zone === 'string' ? batch.zone : '');
+  const locationInfo = [zoneName && `Zone ${zoneName}`, batch.location]
     .filter(Boolean)
     .join(', ');
 
@@ -96,11 +97,12 @@ export const sendTaskDueNotification = async (task: ICareTask, batch: IPlantBatc
   return sendToTokens(fcmTokens, message);
 };
 
-export const sendTaskReminderNotification = async (task: ICareTask, batch: IPlantBatch, fcmTokens: string[]) => {
+export const sendTaskReminderNotification = async (task: ICareTask, batch: any, fcmTokens: string[]) => {
   if (!isFirebaseReady() || fcmTokens.length === 0) return 0;
 
   const careLabel = task.careType.charAt(0).toUpperCase() + task.careType.slice(1);
-  const locationInfo = [batch.zone && `Zone ${batch.zone}`, batch.location]
+  const zoneName = batch.zone?.name || batch.zone?.code || (typeof batch.zone === 'string' ? batch.zone : '');
+  const locationInfo = [zoneName && `Zone ${zoneName}`, batch.location]
     .filter(Boolean)
     .join(', ');
 

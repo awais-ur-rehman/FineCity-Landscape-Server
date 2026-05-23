@@ -91,6 +91,9 @@ export const updateSchedule = async (id: string, updates: any) => {
     updates.scheduledTime !== undefined ||
     updates.assignedTo !== undefined;
 
+  // Capture removed assignees BEFORE applying update
+  const previousAssigneeIds = schedule.assignedTo.map((uid) => uid.toString());
+
   Object.assign(schedule, updates);
   await schedule.save();
 
@@ -106,16 +109,28 @@ export const updateSchedule = async (id: string, updates: any) => {
     await generateTasksForSchedule(schedule._id.toString());
   }
 
+  // Notify current assignees of the update
   if (schedule.assignedTo.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tokens = await notificationService.getTokensForUsers(schedule.assignedTo as any);
     await notificationService.sendScheduleUpdateNotification(schedule, 'updated', tokens);
   }
 
+  // Notify removed assignees so their app forces a sync and drops stale tasks
+  if (updates.assignedTo !== undefined) {
+    const newAssigneeIds = schedule.assignedTo.map((uid) => uid.toString());
+    const removedIds = previousAssigneeIds.filter((uid) => !newAssigneeIds.includes(uid));
+    if (removedIds.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const removedTokens = await notificationService.getTokensForUsers(removedIds as any);
+      await notificationService.sendScheduleUpdateNotification(schedule, 'updated', removedTokens);
+    }
+  }
+
   return getScheduleById(schedule._id.toString());
 };
 
-export const deleteSchedule = async (id: string) => {
+export const deleteSchedule = async (id: string, userId: string) => {
   const schedule = await CareSchedule.findById(id);
   if (!schedule) {
     throw ApiError.notFound('Care schedule not found');
@@ -130,7 +145,11 @@ export const deleteSchedule = async (id: string) => {
       status: 'pending',
       scheduledAt: { $gte: new Date() },
     },
-    { status: 'skipped', skipReason: 'Schedule deactivated' },
+    {
+      status: 'skipped',
+      skipReason: 'Schedule deactivated',
+      skippedBy: userId,
+    },
   );
 
   if (schedule.assignedTo.length > 0) {

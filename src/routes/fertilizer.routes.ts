@@ -1,0 +1,38 @@
+import { Router } from 'express';
+import * as fertilizerController from '../controllers/fertilizer.controller.js';
+import auth from '../middleware/auth.js';
+import rbac from '../middleware/rbac.js';
+import validate from '../middleware/validate.js';
+import { createFertilizerSchema, updateFertilizerSchema } from '../validators/fertilizer.validator.js';
+import { objectIdParamSchema } from '../validators/common.validator.js';
+
+const router = Router();
+
+router.use(auth);
+
+router.get('/', fertilizerController.listFertilizers);
+router.get('/:id', validate(objectIdParamSchema, 'params'), fertilizerController.getFertilizer);
+
+router.post(
+  '/',
+  rbac('super_admin', 'branch_manager'),
+  validate(createFertilizerSchema),
+  fertilizerController.createFertilizer
+);
+
+router.put(
+  '/:id',
+  rbac('super_admin', 'branch_manager'),
+  validate(objectIdParamSchema, 'params'),
+  validate(updateFertilizerSchema),
+  fertilizerController.updateFertilizer
+);
+
+router.delete(
+  '/:id',
+  rbac('super_admin', 'branch_manager'),
+  validate(objectIdParamSchema, 'params'),
+  fertilizerController.deleteFertilizer
+);
+
+export default router;

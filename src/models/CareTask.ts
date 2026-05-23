@@ -11,9 +11,11 @@ export interface ICareTask extends Document {
   assignedTo: mongoose.Types.ObjectId[];
   completedBy?: mongoose.Types.ObjectId;
   completedAt?: Date;
+  selectedFertilizers?: mongoose.Types.ObjectId[];
   skippedBy?: mongoose.Types.ObjectId;
   skipReason?: string;
   notes?: string;
+  photoUrls: string[];
   notificationSent: boolean;
   reminderSent: boolean;
   createdAt: Date;
@@ -64,6 +66,12 @@ const careTaskSchema = new Schema<ICareTask>(
     completedAt: {
       type: Date,
     },
+    selectedFertilizers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Fertilizer',
+      },
+    ],
     skippedBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
@@ -75,6 +83,10 @@ const careTaskSchema = new Schema<ICareTask>(
     notes: {
       type: String,
       trim: true,
+    },
+    photoUrls: {
+      type: [String],
+      default: [],
     },
     notificationSent: {
       type: Boolean,

@@ -18,6 +18,8 @@ import zoneRoutes from './routes/zone.routes.js';
 import categoryRoutes from './routes/category.routes.js';
 import plantTypeRoutes from './routes/plantType.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
+import fertilizerRoutes from './routes/fertilizer.routes.js';
+import auditLogRoutes from './routes/auditLog.routes.js';
 import startTaskGeneratorCron from './jobs/taskGeneratorCron.js';
 
 const app = express();
@@ -57,7 +59,9 @@ app.use('/api/v1/branches', branchRoutes);
 app.use('/api/v1/zones', zoneRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/plant-types', plantTypeRoutes);
+app.use('/api/v1/fertilizers', fertilizerRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/audit-logs', auditLogRoutes);
 
 // 404 handler
 app.use((req, res) => {

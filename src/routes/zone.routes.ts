@@ -12,8 +12,9 @@ router.use(auth);
 router.get('/', validate(listZoneQuerySchema, 'query'), zoneController.listZones);
 router.get('/:id', zoneController.getZone);
 
-router.post('/', rbac('super_admin'), validate(createZoneSchema), zoneController.createZone);
-router.put('/:id', rbac('super_admin'), validate(updateZoneSchema), zoneController.updateZone);
-router.delete('/:id', rbac('super_admin'), zoneController.deleteZone);
+// Admins can manage zones within their own branch(es); super_admin can manage all
+router.post('/', rbac('super_admin', 'branch_manager'), validate(createZoneSchema), zoneController.createZone);
+router.put('/:id', rbac('super_admin', 'branch_manager'), validate(updateZoneSchema), zoneController.updateZone);
+router.delete('/:id', rbac('super_admin', 'branch_manager'), zoneController.deleteZone);
 
 export default router;
