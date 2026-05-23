@@ -33,6 +33,7 @@ interface EnvConfig {
   SMTP_PASS: string;
   SMTP_FROM: string;
   FIREBASE_SERVICE_ACCOUNT_PATH: string;
+  FIREBASE_SERVICE_ACCOUNT: string | undefined;
   ADMIN_URL: string;
   /** Daily — generates tasks for next 30 days from active schedules */
   TASK_GENERATOR_CRON: string;
@@ -63,6 +64,7 @@ const env: EnvConfig = {
   SMTP_PASS: process.env.SMTP_PASS!,
   SMTP_FROM: process.env.SMTP_FROM || '"Finecity Landscape" <noreply@finecitylandscape.com>',
   FIREBASE_SERVICE_ACCOUNT_PATH: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json',
+  FIREBASE_SERVICE_ACCOUNT: process.env.FIREBASE_SERVICE_ACCOUNT,
   ADMIN_URL: process.env.ADMIN_URL || 'http://localhost:5173',
   TASK_GENERATOR_CRON: process.env.TASK_GENERATOR_CRON || '0 2 * * *',         // daily at 02:00
   TASK_DUE_NOTIFIER_CRON: process.env.TASK_DUE_NOTIFIER_CRON || '*/5 * * * *', // every 5 min
