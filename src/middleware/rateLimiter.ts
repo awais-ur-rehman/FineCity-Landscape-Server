@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import { rateLimit } from 'express-rate-limit';
 import { RATE_LIMIT_GENERAL, RATE_LIMIT_OTP } from '../utils/constants.js';
 
 /**

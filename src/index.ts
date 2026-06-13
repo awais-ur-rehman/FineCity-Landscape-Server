@@ -20,6 +20,7 @@ import plantTypeRoutes from './routes/plantType.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import fertilizerRoutes from './routes/fertilizer.routes.js';
 import auditLogRoutes from './routes/auditLog.routes.js';
+import cronRoutes from './routes/cron.routes.js';
 import startTaskGeneratorCron from './jobs/taskGeneratorCron.js';
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/api/v1/plant-types', plantTypeRoutes);
 app.use('/api/v1/fertilizers', fertilizerRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/audit-logs', auditLogRoutes);
+app.use('/api/v1/cron', cronRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -83,7 +85,9 @@ const start = async () => {
   await connectDB();
   initFirebase();
 
-  startTaskGeneratorCron();
+  if (env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    startTaskGeneratorCron();
+  }
 
   app.listen(env.PORT, () => {
     console.log(`Server running on port ${env.PORT} in ${env.NODE_ENV} mode`);
