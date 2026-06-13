@@ -1,5 +1,5 @@
 import express from 'express';
-import * as helmet from 'helmet';
+import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import env from './config/env.js';
@@ -25,9 +25,8 @@ import startTaskGeneratorCron from './jobs/taskGeneratorCron.js';
 
 const app = express();
 
-const helmetMiddleware = (helmet as unknown as () => any);
 // Security
-app.use(helmetMiddleware());
+app.use(helmet());
 app.use(cors({
   origin: env.ADMIN_URL,
   credentials: true,
