@@ -10,7 +10,10 @@ const router = Router();
 
 const verifyCronSecret = (req: Request, res: Response): boolean => {
   const secret = process.env.CRON_SECRET;
-  const provided = req.headers['x-cron-secret'] ?? req.query.secret;
+  const provided =
+    req.headers['x-cron-secret'] ??
+    req.headers['cron_secret'] ??
+    req.query.secret;
   if (!secret || provided !== secret) {
     res.status(401).json({ success: false, message: 'Unauthorized' });
     return false;
